@@ -90,5 +90,18 @@ for step in [
 ]:
     p(step)
 
+h("7. État d'avancement (06/08/2026)")
+table(["Étape", "État"], [
+    ["Firmware ESP32 vanne + débitmètre", "FAIT (à flasher/tester)"],
+    ["Décodeurs TTN (TEROS21, vanne)", "FAIT"],
+    ["Stack Docker Node-RED/InfluxDB/Grafana", "OPÉRATIONNELLE en local (ports 11880/18086/13000)"],
+    ["Flux Node-RED « IoT Irrigation Piloté »", "DÉPLOYÉ : dashboard /ui avec jauge kPa, seuils réglables, mode auto, boutons OUVRIR/FERMER par zone, écriture InfluxDB, downlinks TTN"],
+    ["Export du flux (importable)", "server/nodered/flow_iot_irrigation_pilote.json"],
+    ["Application TTN", "À CRÉER (identifiants MQTT à renseigner dans Node-RED)"],
+    ["Enregistrement devices (Dragino, ESP32)", "À FAIRE"],
+    ["Installation terrain (sondes, vannes, passerelle)", "À FAIRE"],
+    ["Photos du montage", "À AJOUTER dans docs/images/"],
+])
+
 doc.save(r"D:\Projet_Irrigation_LoRaWAN\Projet_Irrigation_Precision_LoRaWAN.docx")
 print("OK: D:\\Projet_Irrigation_LoRaWAN\\Projet_Irrigation_Precision_LoRaWAN.docx")

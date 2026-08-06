@@ -1,0 +1,604 @@
+[
+  {
+    "id": "irr_tab_1",
+    "type": "tab",
+    "label": "IoT Irrigation Piloté",
+    "disabled": false,
+    "info": "TEROS21 (Dragino SDI-12) via TTN -> seuils -> downlink vannes ESP32 + dashboard"
+  },
+  {
+    "id": "irr_mqtt_broker",
+    "type": "mqtt-broker",
+    "name": "TTN EU1",
+    "broker": "eu1.cloud.thethings.network",
+    "port": "8883",
+    "tls": "irr_tls",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": true,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "closeTopic": "",
+    "willTopic": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "irr_tls",
+    "type": "tls-config",
+    "name": "TTN TLS",
+    "cert": "",
+    "key": "",
+    "ca": "",
+    "certname": "",
+    "keyname": "",
+    "caname": "",
+    "servername": "",
+    "verifyservercert": true
+  },
+  {
+    "id": "irr_ui_base",
+    "type": "ui_base",
+    "theme": {
+      "name": "theme-dark"
+    },
+    "site": {
+      "name": "Irrigation Serre",
+      "hideToolbar": "false",
+      "allowSwipe": "false",
+      "lockMenu": "false",
+      "allowTempTheme": "true",
+      "dateFormat": "DD/MM/YYYY",
+      "sizes": {
+        "sx": 48,
+        "sy": 48,
+        "gx": 6,
+        "gy": 6,
+        "cx": 6,
+        "cy": 6,
+        "px": 0,
+        "py": 0
+      }
+    }
+  },
+  {
+    "id": "irr_ui_tab",
+    "type": "ui_tab",
+    "name": "Irrigation",
+    "icon": "opacity",
+    "order": 1,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "irr_grp_mesures",
+    "type": "ui_group",
+    "name": "Mesures TEROS21",
+    "tab": "irr_ui_tab",
+    "order": 1,
+    "disp": true,
+    "width": "6"
+  },
+  {
+    "id": "irr_grp_seuils",
+    "type": "ui_group",
+    "name": "Seuils d'irrigation",
+    "tab": "irr_ui_tab",
+    "order": 2,
+    "disp": true,
+    "width": "6"
+  },
+  {
+    "id": "irr_grp_cmd",
+    "type": "ui_group",
+    "name": "Commande manuelle",
+    "tab": "irr_ui_tab",
+    "order": 3,
+    "disp": true,
+    "width": "6"
+  },
+  {
+    "id": "irr_grp_etat",
+    "type": "ui_group",
+    "name": "État vannes & débit",
+    "tab": "irr_ui_tab",
+    "order": 4,
+    "disp": true,
+    "width": "6"
+  },
+  {
+    "id": "irr_mqtt_in_up",
+    "type": "mqtt in",
+    "z": "irr_tab_1",
+    "name": "TTN uplinks",
+    "topic": "v3/+/devices/+/up",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "irr_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 140,
+    "y": 100,
+    "wires": [
+      [
+        "irr_fn_route"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_route",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Router: TEROS21 / vanne",
+    "func": "const devId = msg.payload.end_device_ids.device_id;\nconst dp = msg.payload.uplink_message.decoded_payload || {};\nmsg.device_id = devId;\nmsg.decoded = dp;\n// Convention de nommage TTN : teros-zoneN..., vanne-zoneN...\nif (devId.startsWith('teros')) return [msg, null];\nif (devId.startsWith('vanne')) return [null, msg];\nreturn [null, null];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "x": 340,
+    "y": 100,
+    "wires": [
+      [
+        "irr_fn_teros"
+      ],
+      [
+        "irr_fn_vanne_status"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_teros",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Décode TEROS21",
+    "func": "// Potentiel matriciel (kPa, négatif) + T° sol depuis le payload Dragino décodé par TTN\nconst d = msg.decoded;\nconst zone = msg.device_id.replace(/^teros-?/, '') || 'zone1';\nlet potentiel = d.matric_potential_kpa;\n// Fallback : parse de la réponse SDI-12 brute type '0+-40.5+22.3'\nif (potentiel === undefined && typeof d.raw_sdi12 === 'string') {\n  const m = d.raw_sdi12.match(/([+-]?\\d+\\.?\\d*)\\+([+-]?\\d+\\.?\\d*)$/);\n  if (m) { potentiel = parseFloat(m[1]); d.soil_temp_c = parseFloat(m[2]); }\n}\nif (potentiel === undefined) return null;\nconst mesure = { zone, potentiel_kpa: potentiel, temp_c: d.soil_temp_c, batterie_v: d.battery_v, ts: Date.now() };\nconst mesures = flow.get('mesures') || {};\nmesures[zone] = mesure;\nflow.set('mesures', mesures);\nmsg.payload = mesure;\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 560,
+    "y": 80,
+    "wires": [
+      [
+        "irr_gauge_pot",
+        "irr_fn_seuils",
+        "irr_fn_influx_soil",
+        "irr_dbg_teros"
+      ]
+    ]
+  },
+  {
+    "id": "irr_dbg_teros",
+    "type": "debug",
+    "z": "irr_tab_1",
+    "name": "debug matricielle",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 790,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "irr_gauge_pot",
+    "type": "ui_gauge",
+    "z": "irr_tab_1",
+    "name": "Potentiel matriciel",
+    "group": "irr_grp_mesures",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "gtype": "gage",
+    "title": "Potentiel matriciel",
+    "label": "kPa",
+    "format": "{{value | number:1}}",
+    "min": "-100",
+    "max": "0",
+    "colors": [
+      "#ca3838",
+      "#e6e600",
+      "#00b500"
+    ],
+    "seg1": "-40",
+    "seg2": "-10",
+    "x": 790,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "irr_num_sec",
+    "type": "ui_numeric",
+    "z": "irr_tab_1",
+    "name": "Seuil sec",
+    "label": "Seuil sec (kPa)",
+    "group": "irr_grp_seuils",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "wrap": false,
+    "passthru": true,
+    "topic": "seuil_sec",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": "-100",
+    "max": "0",
+    "step": "1",
+    "x": 130,
+    "y": 260,
+    "wires": [
+      [
+        "irr_fn_set_seuil"
+      ]
+    ]
+  },
+  {
+    "id": "irr_num_humide",
+    "type": "ui_numeric",
+    "z": "irr_tab_1",
+    "name": "Seuil humide",
+    "label": "Seuil humide (kPa)",
+    "group": "irr_grp_seuils",
+    "order": 2,
+    "width": 0,
+    "height": 0,
+    "wrap": false,
+    "passthru": true,
+    "topic": "seuil_humide",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": "-100",
+    "max": "0",
+    "step": "1",
+    "x": 140,
+    "y": 300,
+    "wires": [
+      [
+        "irr_fn_set_seuil"
+      ]
+    ]
+  },
+  {
+    "id": "irr_num_volmax",
+    "type": "ui_numeric",
+    "z": "irr_tab_1",
+    "name": "Volume max",
+    "label": "Volume max (L)",
+    "group": "irr_grp_seuils",
+    "order": 3,
+    "width": 0,
+    "height": 0,
+    "wrap": false,
+    "passthru": true,
+    "topic": "volume_max_l",
+    "topicType": "str",
+    "format": "{{value}}",
+    "min": "1",
+    "max": "50",
+    "step": "1",
+    "x": 140,
+    "y": 340,
+    "wires": [
+      [
+        "irr_fn_set_seuil"
+      ]
+    ]
+  },
+  {
+    "id": "irr_sw_auto",
+    "type": "ui_switch",
+    "z": "irr_tab_1",
+    "name": "Mode auto",
+    "label": "Irrigation automatique",
+    "group": "irr_grp_seuils",
+    "order": 4,
+    "width": 0,
+    "height": 0,
+    "passthru": true,
+    "topic": "auto",
+    "topicType": "str",
+    "style": "",
+    "onvalue": "true",
+    "onvalueType": "bool",
+    "offvalue": "false",
+    "offvalueType": "bool",
+    "x": 130,
+    "y": 380,
+    "wires": [
+      [
+        "irr_fn_set_seuil"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_set_seuil",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Stocke config",
+    "func": "const cfg = flow.get('config') || { seuil_sec: -40, seuil_humide: -10, volume_max_l: 10, auto: false };\ncfg[msg.topic] = msg.payload;\nflow.set('config', cfg);\nnode.status({fill:'blue', shape:'dot', text: JSON.stringify(cfg)});\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 380,
+    "y": 320,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "irr_fn_seuils",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Logique seuils -> downlink",
+    "func": "const cfg = flow.get('config') || { seuil_sec: -40, seuil_humide: -10, volume_max_l: 10, auto: false };\nif (!cfg.auto) return null;\nconst m = msg.payload;\nconst etats = flow.get('etats_vannes') || {};\nconst dernierCycle = flow.get('dernier_cycle') || {};\nconst ANTI_REBOND_MS = 30 * 60 * 1000;\nconst ouverte = etats[m.zone] === true;\nif (m.potentiel_kpa <= cfg.seuil_sec && !ouverte) {\n  if (Date.now() - (dernierCycle[m.zone] || 0) < ANTI_REBOND_MS) return null;\n  dernierCycle[m.zone] = Date.now();\n  flow.set('dernier_cycle', dernierCycle);\n  msg.zone = m.zone; msg.commande = 'open'; msg.volume_ml = cfg.volume_max_l * 1000;\n  node.warn(`[AUTO] ${m.zone}: ${m.potentiel_kpa} kPa <= ${cfg.seuil_sec} -> OUVERTURE`);\n  return msg;\n}\nif (m.potentiel_kpa >= cfg.seuil_humide && ouverte) {\n  msg.zone = m.zone; msg.commande = 'close';\n  node.warn(`[AUTO] ${m.zone}: ${m.potentiel_kpa} kPa >= ${cfg.seuil_humide} -> FERMETURE`);\n  return msg;\n}\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 160,
+    "wires": [
+      [
+        "irr_fn_downlink"
+      ]
+    ]
+  },
+  {
+    "id": "irr_btn_open",
+    "type": "ui_button",
+    "z": "irr_tab_1",
+    "name": "OUVRIR",
+    "group": "irr_grp_cmd",
+    "order": 2,
+    "width": 0,
+    "height": 0,
+    "passthru": false,
+    "label": "OUVRIR la vanne",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#00b500",
+    "icon": "play_arrow",
+    "payload": "open",
+    "payloadType": "str",
+    "topic": "commande",
+    "topicType": "str",
+    "x": 120,
+    "y": 460,
+    "wires": [
+      [
+        "irr_fn_manuel"
+      ]
+    ]
+  },
+  {
+    "id": "irr_btn_close",
+    "type": "ui_button",
+    "z": "irr_tab_1",
+    "name": "FERMER",
+    "group": "irr_grp_cmd",
+    "order": 3,
+    "width": 0,
+    "height": 0,
+    "passthru": false,
+    "label": "FERMER la vanne",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "#ca3838",
+    "icon": "stop",
+    "payload": "close",
+    "payloadType": "str",
+    "topic": "commande",
+    "topicType": "str",
+    "x": 120,
+    "y": 500,
+    "wires": [
+      [
+        "irr_fn_manuel"
+      ]
+    ]
+  },
+  {
+    "id": "irr_dd_zone",
+    "type": "ui_dropdown",
+    "z": "irr_tab_1",
+    "name": "Zone",
+    "label": "Zone",
+    "tooltip": "",
+    "place": "Choisir la zone",
+    "group": "irr_grp_cmd",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "passthru": true,
+    "multiple": false,
+    "options": [
+      {
+        "label": "Zone 1",
+        "value": "zone1",
+        "type": "str"
+      },
+      {
+        "label": "Zone 2",
+        "value": "zone2",
+        "type": "str"
+      },
+      {
+        "label": "Zone 3",
+        "value": "zone3",
+        "type": "str"
+      }
+    ],
+    "payload": "",
+    "topic": "zone",
+    "topicType": "str",
+    "x": 110,
+    "y": 420,
+    "wires": [
+      [
+        "irr_fn_set_zone"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_set_zone",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Stocke zone",
+    "func": "flow.set('zone_selectionnee', msg.payload); return null;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 300,
+    "y": 420,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "irr_fn_manuel",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Commande manuelle",
+    "func": "const zone = flow.get('zone_selectionnee');\nif (!zone) { node.error('Choisir une zone dans le menu déroulant'); return null; }\nconst cfg = flow.get('config') || { volume_max_l: 10 };\nmsg.zone = zone;\nmsg.commande = msg.payload;  // 'open' ou 'close'\nif (msg.commande === 'open') msg.volume_ml = cfg.volume_max_l * 1000;\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 330,
+    "y": 480,
+    "wires": [
+      [
+        "irr_fn_downlink"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_downlink",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "Construit downlink TTN",
+    "func": "// Mapping zone -> device TTN de la vanne (adapter à vos device IDs)\nconst VANNES = { zone1: 'vanne-zone1', zone2: 'vanne-zone2', zone3: 'vanne-zone3' };\nconst APP_ID = env.get('TTN_APP_ID') || 'MON-APP-TTN';\nconst dev = VANNES[msg.zone];\nif (!dev) { node.error('Zone inconnue: ' + msg.zone); return null; }\nlet bytes;\nif (msg.commande === 'close') bytes = [0x00];\nelse if (msg.volume_ml) { const v = Math.round(msg.volume_ml / 100); bytes = [0x02, (v >> 8) & 0xff, v & 0xff]; }\nelse bytes = [0x01];\nmsg.topic = `v3/${APP_ID}@ttn/devices/${dev}/down/push`;\nmsg.payload = JSON.stringify({ downlinks: [{ f_port: 1, frm_payload: Buffer.from(bytes).toString('base64'), priority: 'NORMAL' }] });\nconst etats = flow.get('etats_vannes') || {};\netats[msg.zone] = (msg.commande !== 'close');\nflow.set('etats_vannes', etats);\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 620,
+    "y": 480,
+    "wires": [
+      [
+        "irr_mqtt_out_down",
+        "irr_dbg_down"
+      ]
+    ]
+  },
+  {
+    "id": "irr_mqtt_out_down",
+    "type": "mqtt out",
+    "z": "irr_tab_1",
+    "name": "TTN downlink",
+    "topic": "",
+    "qos": "0",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "irr_mqtt_broker",
+    "x": 860,
+    "y": 460,
+    "wires": []
+  },
+  {
+    "id": "irr_dbg_down",
+    "type": "debug",
+    "z": "irr_tab_1",
+    "name": "debug downlink",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 860,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "irr_fn_vanne_status",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "État vanne + débit",
+    "func": "const d = msg.decoded;\nconst zone = msg.device_id.replace(/^vanne-?/, '') || 'zone1';\nconst etats = flow.get('etats_vannes') || {};\netats[zone] = d.valve_open === true;\nflow.set('etats_vannes', etats);\nmsg.payload = { zone, valve_open: d.valve_open, cycle_volume_ml: d.cycle_volume_ml, total_volume_l: d.total_volume_l };\n// Alerte : vanne ouverte mais aucun débit\nif (d.valve_open && d.cycle_volume_ml === 0) node.warn(`[ALERTE] ${zone}: vanne ouverte sans débit !`);\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 570,
+    "y": 200,
+    "wires": [
+      [
+        "irr_txt_etat",
+        "irr_fn_influx_irrig"
+      ]
+    ]
+  },
+  {
+    "id": "irr_txt_etat",
+    "type": "ui_text",
+    "z": "irr_tab_1",
+    "name": "État vanne",
+    "group": "irr_grp_etat",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "label": "Dernier état",
+    "format": "{{msg.payload.zone}} : {{msg.payload.valve_open ? 'OUVERTE' : 'fermée'}} — {{msg.payload.cycle_volume_ml}} mL (total {{msg.payload.total_volume_l}} L)",
+    "layout": "col-center",
+    "x": 800,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "irr_fn_influx_soil",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "LP soil -> Influx",
+    "func": "const m = msg.payload;\nmsg.url = env.get('INFLUX_URL') + '/api/v2/write?org=' + encodeURIComponent(env.get('INFLUX_ORG')) + '&bucket=' + encodeURIComponent(env.get('INFLUX_BUCKET')) + '&precision=ms';\nmsg.method = 'POST';\nmsg.headers = { 'Authorization': 'Token ' + env.get('INFLUX_TOKEN'), 'Content-Type': 'text/plain' };\nlet lp = `soil,zone=${m.zone} matric_potential_kpa=${m.potentiel_kpa}`;\nif (Number.isFinite(m.temp_c)) lp += `,soil_temp_c=${m.temp_c}`;\nif (Number.isFinite(m.batterie_v)) lp += `,battery_v=${m.batterie_v}`;\nmsg.payload = lp + ' ' + m.ts;\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 800,
+    "y": 120,
+    "wires": [
+      [
+        "irr_http_influx"
+      ]
+    ]
+  },
+  {
+    "id": "irr_fn_influx_irrig",
+    "type": "function",
+    "z": "irr_tab_1",
+    "name": "LP irrigation -> Influx",
+    "func": "const m = msg.payload;\nmsg.url = env.get('INFLUX_URL') + '/api/v2/write?org=' + encodeURIComponent(env.get('INFLUX_ORG')) + '&bucket=' + encodeURIComponent(env.get('INFLUX_BUCKET')) + '&precision=ms';\nmsg.method = 'POST';\nmsg.headers = { 'Authorization': 'Token ' + env.get('INFLUX_TOKEN'), 'Content-Type': 'text/plain' };\nmsg.payload = `irrigation,zone=${m.zone} valve_open=${m.valve_open ? 1 : 0},cycle_volume_ml=${m.cycle_volume_ml || 0},total_volume_l=${m.total_volume_l || 0} ` + Date.now();\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 810,
+    "y": 240,
+    "wires": [
+      [
+        "irr_http_influx"
+      ]
+    ]
+  },
+  {
+    "id": "irr_http_influx",
+    "type": "http request",
+    "z": "irr_tab_1",
+    "name": "POST InfluxDB",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "x": 1040,
+    "y": 180,
+    "wires": [
+      []
+    ]
+  }
+]

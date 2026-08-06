@@ -75,7 +75,22 @@ Les seuils sont configurables par zone dans Node-RED (`server/nodered/`).
 1. **TTN** : créer une application, enregistrer les Dragino et les ESP32 (OTAA), coller les décodeurs de `ttn/`.
 2. **Serveur** : `docker compose up -d` dans `server/`, configurer l'intégration MQTT TTN dans Node-RED.
 3. **Firmware** : renseigner les clés OTAA dans `firmware/esp32_valve_controller/src/config.h`, compiler avec PlatformIO, flasher.
-4. **Grafana** : importer `grafana/dashboard_irrigation.json`, pointer la datasource InfluxDB.
+4. **Grafana** : importer le dashboard (voir `grafana/`), pointer la datasource InfluxDB.
+
+## 📊 État d'avancement (06/08/2026)
+
+| Étape | État |
+|---|---|
+| Firmware ESP32 vanne + débitmètre | ✅ Écrit (à flasher/tester) |
+| Décodeurs TTN (TEROS21, vanne) | ✅ Écrits |
+| Stack Docker Node-RED/InfluxDB/Grafana | ✅ Opérationnelle en local |
+| Flux Node-RED « IoT Irrigation Piloté » | ✅ Déployé — dashboard `/ui` : jauge kPa, seuils réglables, mode auto, boutons OUVRIR/FERMER par zone |
+| Export du flux | ✅ [server/nodered/flow_iot_irrigation_pilote.json](server/nodered/flow_iot_irrigation_pilote.json) (importable) |
+| Application TTN | ⬜ À créer (identifiants MQTT à renseigner dans Node-RED) |
+| Enregistrement des devices (Dragino, ESP32) | ⬜ À faire |
+| Installation terrain (sondes, vannes, passerelle) | ⬜ À faire |
+| Photos du montage | ⬜ À ajouter dans `docs/images/` |
+
 
 ## 📸 Photos
 
