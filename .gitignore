@@ -1,3 +1,8 @@
 server/.env
 .pio/
 *.docx
+
+# Secrets / credentials
+flows_cred.json
+credentials.txt
+*.token

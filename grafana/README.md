@@ -1,5 +1,11 @@
 # Dashboard Grafana
 
+## Contenu versionné (installation locale D:\Grafana)
+
+- `dashboards/sonde_kpa.json` et `dashboards/sonde_temperature.json` : dashboards en production (bucket `sondes`, org `ird`).
+- `provisioning/datasources/influxdb.yaml` : datasource InfluxDB (Flux) — remplacer `${INFLUX_TOKEN}` par votre token.
+- `provisioning/dashboards/dashboards.yaml` : chargement auto des dashboards depuis `D:\Grafana\dashboards`.
+
 Panels recommandés (datasource InfluxDB, bucket `irrigation`) :
 
 1. **Potentiel matriciel par zone** (time series, kPa) — seuils sec/humide en lignes de référence

@@ -1,0 +1,649 @@
+[
+    {
+        "id": "6daaab707e05e63b",
+        "type": "tab",
+        "label": "Flux 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "6459a7a1bc269b31",
+        "type": "mqtt-broker",
+        "name": "sonde potentielle matricielle",
+        "broker": "eu1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "29f652240c398aab",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "eu1.cloud.thethings.network",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "78b22f0e7c914619",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "eu1.cloud.thethings.network",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "db0b0fc6f81d035f",
+        "type": "mqtt-broker",
+        "name": "sondehumidite",
+        "broker": "eu1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "5b0b890cafa3d4f5",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "a627923e40a92730",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": true,
+                "reset": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "8573c22f538e3e02",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "5b0b890cafa3d4f5",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "3ac6b37223aa8197",
+        "type": "mqtt-broker",
+        "name": "sondematricelle",
+        "broker": "eu1.cloud.thethings.network",
+        "port": "8883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "f4e36c6d04455b27",
+        "type": "mqtt-broker",
+        "name": "sondematricielle",
+        "broker": "eu1.cloud.thethings.network",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "influx_cfg_01",
+        "type": "influxdb",
+        "hostname": "localhost",
+        "port": "8086",
+        "protocol": "http",
+        "database": "sondes",
+        "name": "InfluxDB local",
+        "usetls": false,
+        "tls": "",
+        "influxdbVersion": "2.0",
+        "url": "http://localhost:8086",
+        "rejectUnauthorized": false
+    },
+    {
+        "id": "e4c1df2521126284",
+        "type": "ui_text",
+        "z": "6daaab707e05e63b",
+        "group": "8573c22f538e3e02",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Temp�rature",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 730,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "7023831f739b68f2",
+        "type": "ui_toast",
+        "z": "6daaab707e05e63b",
+        "position": "top right",
+        "displayTime": "3",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "OK",
+        "cancel": "",
+        "raw": true,
+        "className": "",
+        "topic": "",
+        "name": "",
+        "x": 710,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "b7d60cd0872381c3",
+        "type": "change",
+        "z": "6daaab707e05e63b",
+        "name": "toto",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.uplink_message.decoded_payload.temperature_C",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 430,
+        "y": 140,
+        "wires": [
+            [
+                "e4c1df2521126284",
+                "5463941a7c76e258"
+            ]
+        ]
+    },
+    {
+        "id": "5463941a7c76e258",
+        "type": "debug",
+        "z": "6daaab707e05e63b",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "e5ca62a7888344dd",
+        "type": "ui_text",
+        "z": "6daaab707e05e63b",
+        "group": "8573c22f538e3e02",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Humidit?",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 720,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "96e24c0a545e3502",
+        "type": "change",
+        "z": "6daaab707e05e63b",
+        "name": "toto",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.uplink_message.decoded_payload.soil_tension_kPa",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 430,
+        "y": 200,
+        "wires": [
+            [
+                "e5ca62a7888344dd"
+            ]
+        ]
+    },
+    {
+        "id": "391017167e3a30cd",
+        "type": "mqtt out",
+        "z": "6daaab707e05e63b",
+        "name": "EV",
+        "topic": "v3/sondehumidite@ttn/devices/humidity-probe/down/push",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "f4e36c6d04455b27",
+        "x": 570,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "aa11bb22cc33dd44",
+        "type": "function",
+        "z": "6daaab707e05e63b",
+        "name": "Format TTN downlink",
+        "func": "// Formater la commande d ouverture pour TTN\nvar cmd = msg.payload; // \"1\" = ouverture, \"0\" = fermeture\n\n// Encoder en base64 pour TTN frm_payload\nvar b64 = Buffer.from(cmd, 'utf8').toString('base64');\n\nmsg.payload = JSON.stringify({\n    downlinks: [{\n        f_port: 1,\n        frm_payload: b64,\n        priority: \"NORMAL\"\n    }]\n});\n\nnode.status({fill:\"green\", shape:\"dot\", text:\"Commande: \" + cmd});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 400,
+        "wires": [
+            [
+                "391017167e3a30cd"
+            ]
+        ]
+    },
+    {
+        "id": "ff00ee11dd22cc33",
+        "type": "ui_button",
+        "z": "6daaab707e05e63b",
+        "name": "",
+        "group": "8573c22f538e3e02",
+        "order": 5,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Fermeture",
+        "tooltip": "Fermer la vanne",
+        "color": "",
+        "bgcolor": "#dc3545",
+        "className": "",
+        "icon": "fa-lock",
+        "payload": "0",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "aa11bb22cc33dd44"
+            ]
+        ]
+    },
+    {
+        "id": "791e27f670b6caf9",
+        "type": "function",
+        "z": "6daaab707e05e63b",
+        "name": "Format TTN downlink",
+        "func": "// Formater la commande d ouverture pour TTN\nvar cmd = msg.payload; // \"1\" = ouverture, \"0\" = fermeture\n\n// Encoder en base64 pour TTN frm_payload\nvar b64 = Buffer.from(cmd, 'utf8').toString('base64');\n\nmsg.payload = JSON.stringify({\n    downlinks: [{\n        f_port: 1,\n        frm_payload: b64,\n        priority: \"NORMAL\"\n    }]\n});\n\nnode.status({fill:\"green\", shape:\"dot\", text:\"Commande: \" + cmd});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 320,
+        "wires": [
+            [
+                "391017167e3a30cd"
+            ]
+        ]
+    },
+    {
+        "id": "67f847cda797c739",
+        "type": "ui_button",
+        "z": "6daaab707e05e63b",
+        "name": "",
+        "group": "8573c22f538e3e02",
+        "order": 5,
+        "width": 3,
+        "height": 1,
+        "passthru": false,
+        "label": "Ouverture",
+        "tooltip": "Ouvrir la vanne",
+        "color": "",
+        "bgcolor": "#00ff00",
+        "className": "",
+        "icon": "fa-unlock",
+        "payload": "1",
+        "payloadType": "str",
+        "topic": "",
+        "topicType": "str",
+        "x": 120,
+        "y": 320,
+        "wires": [
+            [
+                "791e27f670b6caf9"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_matric_in_01",
+        "type": "mqtt in",
+        "z": "6daaab707e05e63b",
+        "name": "Sonde potentielle matricielle",
+        "topic": "v3/sondehumidite@ttn/devices/humidity-probe/up",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "f4e36c6d04455b27",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 480,
+        "wires": [
+            [
+                "func_matric_01",
+                "debug_matric_01",
+                "b7d60cd0872381c3",
+                "96e24c0a545e3502",
+                "7023831f739b68f2"
+            ]
+        ]
+    },
+    {
+        "id": "func_matric_01",
+        "type": "function",
+        "z": "6daaab707e05e63b",
+        "name": "Parse TTN  InfluxDB",
+        "func": "// Parser le payload JSON TTN\nvar payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch(e) { return null; }\n}\n\nvar uplink = payload.uplink_message;\nif (!uplink) return null;\n\nvar decoded = uplink.decoded_payload;\nvar deviceId = (payload.end_device_ids || {}).device_id || msg.topic;\n\n// Extraire les champs numeriques du payload decode TTN\nvar fields = {};\nif (decoded) {\n    for (var key in decoded) {\n        var val = decoded[key];\n        if (typeof val === \"number\") { fields[key] = val; }\n    }\n}\nif (Object.keys(fields).length === 0) return null;\n\n// Format correct pour node-red-contrib-influxdb 0.7 : [fields, tags]\nmsg.payload = [fields, { device: deviceId }];\n\nnode.status({fill:\"green\", shape:\"dot\", text: \"OK - \" + Object.keys(fields).join(\", \")});\nreturn msg;",
+        "outputs": 1,
+        "x": 400,
+        "y": 480,
+        "wires": [
+            [
+                "influx_out_01"
+            ]
+        ]
+    },
+    {
+        "id": "influx_out_01",
+        "type": "influxdb out",
+        "z": "6daaab707e05e63b",
+        "influxdb": "influx_cfg_01",
+        "name": " InfluxDB sondes",
+        "measurement": "sonde_matricielle",
+        "precision": "ms",
+        "retentionPolicy": "",
+        "database": "sondes",
+        "retentionPolicyV18Flux": "",
+        "org": "ird",
+        "bucket": "sondes",
+        "x": 650,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "debug_matric_01",
+        "type": "debug",
+        "z": "6daaab707e05e63b",
+        "name": "debug matricielle",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 540,
+        "wires": []
+    }
+]

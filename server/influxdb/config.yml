@@ -1,0 +1,5 @@
+bolt-path: D:\InfluxDB\data\influxd.bolt
+engine-path: D:\InfluxDB\data\engine
+sqlite-path: D:\InfluxDB\data\influxd.sqlite
+http-bind-address: ":8086"
+log-level: info

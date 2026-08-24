@@ -1,5 +1,10 @@
 # Orchestration Node-RED
 
+## Flux disponibles
+
+- `flows_production.json` : **flux réellement en production** (export de `C:\Users\VIAL\.node-red\flows.json`) — uplink TEROS21 (app TTN `sondehumidite`, device `humidity-probe`) → InfluxDB local (bucket `sondes`, measurement `sonde_matricielle`) + boutons Ouverture/Fermeture de l'électrovanne (downlink TTN) sur le dashboard Node-RED. Les credentials (clé API TTN, token InfluxDB) ne sont pas versionnés : les ressaisir après import.
+- `flow_iot_irrigation_pilote.json` : flux pilote cible multi-zones avec seuils automatiques.
+
 ## Connexion TTN (MQTT)
 
 - Broker : `eu1.cloud.thethings.network:8883` (TLS)
