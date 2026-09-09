@@ -11,8 +11,8 @@ services:
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: admin
       DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:?definir INFLUX_PASSWORD dans .env}
-      DOCKER_INFLUXDB_INIT_ORG: serre
-      DOCKER_INFLUXDB_INIT_BUCKET: irrigation
+      DOCKER_INFLUXDB_INIT_ORG: ird
+      DOCKER_INFLUXDB_INIT_BUCKET: sondes
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?definir INFLUX_TOKEN dans .env}
 
   nodered:
@@ -36,8 +36,11 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?definir GRAFANA_PASSWORD dans .env}
+      INFLUX_TOKEN: ${INFLUX_TOKEN:?definir INFLUX_TOKEN dans .env}
     depends_on:
       - influxdb
 
