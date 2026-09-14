@@ -1,6 +1,9 @@
 server/.env
 .pio/
 *.docx
+build/
+*.exe
+data balance/*.csv
 
 # Secrets / credentials
 flows_cred.json
