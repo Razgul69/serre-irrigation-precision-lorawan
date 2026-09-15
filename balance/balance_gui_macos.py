@@ -153,6 +153,9 @@ class App:
         self.port_menu = ttk.Combobox(port_frame, textvariable=self.port_var,
                                       state="readonly", width=32)
         self.port_menu.pack(side=tk.LEFT)
+        self.btn_refresh = tk.Button(port_frame, text="Actualiser", command=self.refresh_ports,
+                         bg="#e0e0e0", fg=FG)
+        self.btn_refresh.pack(side=tk.LEFT, padx=(6, 0))
         self.refresh_ports()
 
         controls = tk.Frame(self.root, bg=BG)
@@ -181,6 +184,7 @@ class App:
         self.collector = Collector(port, self.events)
         self.collector.start()
         self.port_menu.config(state=tk.DISABLED)
+        self.btn_refresh.config(state=tk.DISABLED)
         self.btn_start.set_enabled(False)
         self.btn_stop.set_enabled(True)
         self.lbl_status.config(text="Collecte en cours - veille Mac bloquee", fg="#2e7d32")
@@ -192,6 +196,7 @@ class App:
             self.caffeinate.terminate()
             self.caffeinate = None
         self.port_menu.config(state="readonly")
+        self.btn_refresh.config(state=tk.NORMAL)
         self.btn_start.set_enabled(True)
         self.btn_stop.set_enabled(False)
         self.lbl_status.config(text="Arrete", fg="#333333")
