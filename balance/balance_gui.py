@@ -137,7 +137,8 @@ class Collector(threading.Thread):
         token = read_influx_token(root) if sys.platform == "win32" else ""
         outdir = root / "data balance"
         outdir.mkdir(parents=True, exist_ok=True)
-        csv_path = outdir / f"balance_{dt.datetime.now():%Y%m%d_%H%M%S}.csv"
+        csv_path = outdir / "balance.csv"
+        new_file = not csv_path.exists()
         influx_warned = False
         n_ok = n_err = 0
         last_written: float | None = None
@@ -145,10 +146,11 @@ class Collector(threading.Thread):
             port = serial_port()
             with serial.Serial(port, BAUD, bytesize=8, parity=serial.PARITY_NONE,
                                stopbits=1, timeout=2) as ser, \
-                 open(csv_path, "w", newline="", encoding="utf-8") as f:
+                 open(csv_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
-                                 "weight_g", "stable", "status"])
+                if new_file:
+                    writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
+                                     "weight_g", "stable", "status"])
                 self.events.put(("info", f"Collecte demarree sur {port} ({csv_path.name})"))
                 while not self.stop_flag.is_set():
                     t_next = time.monotonic() + INTERVAL_S

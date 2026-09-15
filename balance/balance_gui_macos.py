@@ -23,8 +23,8 @@ from serial.tools import list_ports
 
 BAUD = 9600
 INTERVAL_S = 5.0
-BG = "#f5f5f5"
-FG = "#111111"
+BG = "white"
+FG = "black"
 RE_WEIGHT = re.compile(r"^S\s+([SD])\s+([+-]?\d+(?:\.\d+)?)\s+(\S+)\s*$")
 UNIT_TO_G = {"g": 1.0, "kg": 1000.0, "mg": 0.001}
 
@@ -110,6 +110,21 @@ class Collector(threading.Thread):
         self.events.put(("info", f"Collecte arretee ({n_ok} ok, {n_err} erreurs)"))
 
 
+class ColorButton(tk.Label):
+    """Bouton dessine : les tk.Button macOS (Aqua) ignorent la couleur bg."""
+    def __init__(self, parent, text, color, command):
+        super().__init__(parent, text=text, width=12, height=2, bg=color,
+                         fg="white", font=("Helvetica", 12, "bold"), cursor="pointinghand")
+        self.color = color
+        self.command = command
+        self.enabled = True
+        self.bind("<Button-1>", lambda _e: self.command() if self.enabled else None)
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
+        self.config(bg=self.color if enabled else "#bdbdbd")
+
+
 class App:
     def __init__(self):
         self.root = tk.Tk()
@@ -125,10 +140,10 @@ class App:
                                    bg=BG, fg=FG)
         self.lbl_weight.pack(pady=(15, 3))
         self.lbl_status = tk.Label(self.root, text="Arrete", font=("Helvetica", 11),
-                                   bg=BG, fg="#555555")
+                                   bg=BG, fg="#333333")
         self.lbl_status.pack()
         self.lbl_counts = tk.Label(self.root, text="", font=("Helvetica", 9),
-                                   bg=BG, fg="#555555")
+                                   bg=BG, fg="#333333")
         self.lbl_counts.pack()
 
         port_frame = tk.Frame(self.root, bg=BG)
@@ -142,15 +157,11 @@ class App:
 
         controls = tk.Frame(self.root, bg=BG)
         controls.pack(pady=14)
-        self.btn_start = tk.Button(controls, text="MARCHE", width=12, height=2,
-                                   bg="#2e7d32", fg="white",
-                                   font=("Helvetica", 11, "bold"), command=self.start)
+        self.btn_start = ColorButton(controls, "MARCHE", "#2e7d32", self.start)
         self.btn_start.pack(side=tk.LEFT, padx=10)
-        self.btn_stop = tk.Button(controls, text="ARRET", width=12, height=2,
-                                  bg="#c62828", fg="white",
-                                  font=("Helvetica", 11, "bold"), command=self.stop,
-                                  state=tk.DISABLED)
+        self.btn_stop = ColorButton(controls, "ARRET", "#c62828", self.stop)
         self.btn_stop.pack(side=tk.LEFT, padx=10)
+        self.btn_stop.set_enabled(False)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.after(200, self.poll_events)
 
@@ -170,8 +181,8 @@ class App:
         self.collector = Collector(port, self.events)
         self.collector.start()
         self.port_menu.config(state=tk.DISABLED)
-        self.btn_start.config(state=tk.DISABLED)
-        self.btn_stop.config(state=tk.NORMAL)
+        self.btn_start.set_enabled(False)
+        self.btn_stop.set_enabled(True)
         self.lbl_status.config(text="Collecte en cours - veille Mac bloquee", fg="#2e7d32")
 
     def stop(self):
@@ -181,9 +192,9 @@ class App:
             self.caffeinate.terminate()
             self.caffeinate = None
         self.port_menu.config(state="readonly")
-        self.btn_start.config(state=tk.NORMAL)
-        self.btn_stop.config(state=tk.DISABLED)
-        self.lbl_status.config(text="Arrete", fg="grey")
+        self.btn_start.set_enabled(True)
+        self.btn_stop.set_enabled(False)
+        self.lbl_status.config(text="Arrete", fg="#333333")
 
     def poll_events(self):
         try:
