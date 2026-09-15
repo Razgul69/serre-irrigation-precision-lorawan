@@ -23,6 +23,8 @@ from serial.tools import list_ports
 
 BAUD = 9600
 INTERVAL_S = 5.0
+BG = "#f5f5f5"
+FG = "#111111"
 RE_WEIGHT = re.compile(r"^S\s+([SD])\s+([+-]?\d+(?:\.\d+)?)\s+(\S+)\s*$")
 UNIT_TO_G = {"g": 1.0, "kg": 1000.0, "mg": 0.001}
 
@@ -65,16 +67,18 @@ class Collector(threading.Thread):
     def run(self):
         outdir = data_directory()
         outdir.mkdir(parents=True, exist_ok=True)
-        csv_path = outdir / f"balance_{dt.datetime.now():%Y%m%d_%H%M%S}.csv"
+        csv_path = outdir / "balance.csv"
+        new_file = not csv_path.exists()
         last_written: float | None = None
         n_ok = n_err = 0
         try:
             with serial.Serial(self.port, BAUD, bytesize=8, parity=serial.PARITY_NONE,
                                stopbits=1, timeout=2) as ser, \
-                 open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
+                 open(csv_path, "a", newline="", encoding="utf-8") as csv_file:
                 writer = csv.writer(csv_file)
-                writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
-                                 "weight_g", "stable", "status"])
+                if new_file:
+                    writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
+                                     "weight_g", "stable", "status"])
                 self.events.put(("info", f"Collecte demarree ({csv_path.name})"))
                 while not self.stop_flag.is_set():
                     next_read = time.monotonic() + INTERVAL_S
@@ -112,27 +116,31 @@ class App:
         self.root.title("Balance Ohaus - Collecte Mac")
         self.root.geometry("430x270")
         self.root.resizable(False, False)
+        self.root.configure(bg=BG)
         self.collector: Collector | None = None
         self.events: queue.Queue = queue.Queue()
         self.caffeinate: subprocess.Popen | None = None
 
-        self.lbl_weight = tk.Label(self.root, text="--- g", font=("Helvetica", 32, "bold"))
+        self.lbl_weight = tk.Label(self.root, text="--- g", font=("Helvetica", 32, "bold"),
+                                   bg=BG, fg=FG)
         self.lbl_weight.pack(pady=(15, 3))
-        self.lbl_status = tk.Label(self.root, text="Arrete", font=("Helvetica", 11), fg="grey")
+        self.lbl_status = tk.Label(self.root, text="Arrete", font=("Helvetica", 11),
+                                   bg=BG, fg="#555555")
         self.lbl_status.pack()
-        self.lbl_counts = tk.Label(self.root, text="", font=("Helvetica", 9), fg="grey")
+        self.lbl_counts = tk.Label(self.root, text="", font=("Helvetica", 9),
+                                   bg=BG, fg="#555555")
         self.lbl_counts.pack()
 
-        port_frame = tk.Frame(self.root)
+        port_frame = tk.Frame(self.root, bg=BG)
         port_frame.pack(pady=(12, 4))
-        tk.Label(port_frame, text="Port balance :").pack(side=tk.LEFT, padx=(0, 8))
+        tk.Label(port_frame, text="Port balance :", bg=BG, fg=FG).pack(side=tk.LEFT, padx=(0, 8))
         self.port_var = tk.StringVar()
         self.port_menu = ttk.Combobox(port_frame, textvariable=self.port_var,
                                       state="readonly", width=32)
         self.port_menu.pack(side=tk.LEFT)
         self.refresh_ports()
 
-        controls = tk.Frame(self.root)
+        controls = tk.Frame(self.root, bg=BG)
         controls.pack(pady=14)
         self.btn_start = tk.Button(controls, text="MARCHE", width=12, height=2,
                                    bg="#2e7d32", fg="white",
