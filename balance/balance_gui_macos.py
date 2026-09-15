@@ -114,7 +114,7 @@ class ColorButton(tk.Label):
     """Bouton dessine : les tk.Button macOS (Aqua) ignorent la couleur bg."""
     def __init__(self, parent, text, color, command):
         super().__init__(parent, text=text, width=12, height=2, bg=color,
-                         fg="white", font=("Helvetica", 12, "bold"), cursor="pointinghand")
+                         fg="white", font=("Helvetica", 12, "bold"))
         self.color = color
         self.command = command
         self.enabled = True
@@ -225,4 +225,11 @@ class App:
 
 
 if __name__ == "__main__":
-    App().run()
+    try:
+        App().run()
+    except Exception:
+        import traceback
+        log = Path.home() / "Documents" / "BalanceCollecteur" / "error.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(traceback.format_exc(), encoding="utf-8")
+        raise

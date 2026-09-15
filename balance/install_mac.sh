@@ -33,6 +33,12 @@ echo "Script telecharge."
 # 4. Construction de l'application
 python3 -m PyInstaller --windowed --noconfirm --name BalanceCollecteurMac balance_gui_macos.py
 
+# Forcer le mode clair : l'interface est concue pour un fond blanc
+/usr/libexec/PlistBuddy -c "Add :NSRequiresAquaSystemAppearance bool true" \
+    dist/BalanceCollecteurMac.app/Contents/Info.plist 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSRequiresAquaSystemAppearance true" \
+    dist/BalanceCollecteurMac.app/Contents/Info.plist
+
 # 5. Installation dans /Applications de l'utilisateur
 mkdir -p "$HOME/Applications"
 rm -rf "$HOME/Applications/BalanceCollecteurMac.app"
