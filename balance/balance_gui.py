@@ -13,8 +13,10 @@ from __future__ import annotations
 import csv
 import ctypes
 import datetime as dt
+import os
 import queue
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -24,8 +26,9 @@ import urllib.request
 from pathlib import Path
 
 import serial
+from serial.tools import list_ports
 
-PORT = "COM3"
+WINDOWS_PORT = "COM3"
 BAUD = 9600
 INTERVAL_S = 5.0
 INFLUX_URL = "http://localhost:8086"
@@ -38,6 +41,42 @@ ES_SYSTEM_REQUIRED = 0x00000001
 
 RE_WEIGHT = re.compile(r"^S\s+([SD])\s+([+-]?\d+(?:\.\d+)?)\s+(\S+)\s*$")
 UNIT_TO_G = {"g": 1.0, "kg": 1000.0, "mg": 0.001}
+
+
+def serial_port() -> str:
+    """Detecte le port USB serie de la balance ; COM3 en secours sous Windows."""
+    candidates = [port.device for port in list_ports.comports()
+                  if any(word in (port.description or "").lower()
+                         for word in ("usb", "serial", "uart", "ftdi", "cp210"))
+                  and "bluetooth" not in (port.description or "").lower()]
+    if len(candidates) == 1:
+        return candidates[0]
+    if sys.platform == "win32":
+        return WINDOWS_PORT
+    if not candidates:
+        raise serial.SerialException("Aucun port USB serie detecte pour la balance")
+    raise serial.SerialException(
+        "Plusieurs ports USB serie detectes : " + ", ".join(candidates))
+
+
+class StayAwake:
+    """Empeche la mise en veille pendant une collecte active."""
+    def __init__(self):
+        self.caffeinate: subprocess.Popen | None = None
+
+    def start(self):
+        if sys.platform == "win32":
+            ctypes.windll.kernel32.SetThreadExecutionState(
+                ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+        elif sys.platform == "darwin":
+            self.caffeinate = subprocess.Popen(["caffeinate", "-i"])
+
+    def stop(self):
+        if sys.platform == "win32":
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        elif self.caffeinate:
+            self.caffeinate.terminate()
+            self.caffeinate = None
 
 
 def project_root() -> Path:
@@ -95,7 +134,7 @@ class Collector(threading.Thread):
 
     def run(self):
         root = project_root()
-        token = read_influx_token(root)
+        token = read_influx_token(root) if sys.platform == "win32" else ""
         outdir = root / "data balance"
         outdir.mkdir(parents=True, exist_ok=True)
         csv_path = outdir / f"balance_{dt.datetime.now():%Y%m%d_%H%M%S}.csv"
@@ -103,13 +142,14 @@ class Collector(threading.Thread):
         n_ok = n_err = 0
         last_written: float | None = None
         try:
-            with serial.Serial(PORT, BAUD, bytesize=8, parity=serial.PARITY_NONE,
+            port = serial_port()
+            with serial.Serial(port, BAUD, bytesize=8, parity=serial.PARITY_NONE,
                                stopbits=1, timeout=2) as ser, \
                  open(csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
                                  "weight_g", "stable", "status"])
-                self.events.put(("info", f"Collecte demarree ({csv_path.name})"))
+                self.events.put(("info", f"Collecte demarree sur {port} ({csv_path.name})"))
                 while not self.stop_flag.is_set():
                     t_next = time.monotonic() + INTERVAL_S
                     ser.reset_input_buffer()
@@ -157,6 +197,7 @@ class App:
         self.root.resizable(False, False)
         self.collector: Collector | None = None
         self.events: queue.Queue = queue.Queue()
+        self.stay_awake = StayAwake()
 
         self.lbl_weight = tk.Label(self.root, text="--- g", font=("Segoe UI", 32, "bold"))
         self.lbl_weight.pack(pady=(15, 5))
@@ -183,17 +224,17 @@ class App:
     def start(self):
         if self.collector and self.collector.is_alive():
             return
-        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+        self.stay_awake.start()
         self.collector = Collector(self.events)
         self.collector.start()
         self.btn_start.config(state=tk.DISABLED)
         self.btn_stop.config(state=tk.NORMAL)
-        self.lbl_status.config(text="Collecte en cours - veille PC bloquee", fg="#2e7d32")
+        self.lbl_status.config(text="Collecte en cours - veille bloquee", fg="#2e7d32")
 
     def stop(self):
         if self.collector:
             self.collector.stop_flag.set()
-        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        self.stay_awake.stop()
         self.btn_start.config(state=tk.NORMAL)
         self.btn_stop.config(state=tk.DISABLED)
         self.lbl_status.config(text="Arrete", fg="grey")

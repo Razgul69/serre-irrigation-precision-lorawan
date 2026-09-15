@@ -3,6 +3,7 @@ server/.env
 *.docx
 build/
 *.exe
+__pycache__/
 data balance/*.csv
 
 # Secrets / credentials
