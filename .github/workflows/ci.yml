@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependances
+        run: pip install pyserial pytest
+
+      - name: Syntaxe des scripts
+        run: |
+          python -m py_compile balance/collect_balance.py
+          python -m py_compile balance/balance_gui.py
+          python -m py_compile balance/balance_gui_macos.py
+          python -m py_compile balance/diagnose_serial.py
+          python -m py_compile tools/diagnose_vaisala.py
+
+      - name: Tests unitaires
+        run: pytest tests/ -v
+
+      - name: Validation JSON Grafana
+        run: |
+          python -c "import json,glob; [json.load(open(f,encoding='utf-8')) for f in glob.glob('grafana/dashboards/*.json')]; print('dashboards OK')"
