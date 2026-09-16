@@ -75,16 +75,21 @@ class Collector(threading.Thread):
             with serial.Serial(self.port, BAUD, bytesize=8, parity=serial.PARITY_NONE,
                                stopbits=1, timeout=2) as ser, \
                  open(csv_path, "a", newline="", encoding="utf-8") as csv_file:
+                self.events.put(("port_open", self.port))
                 writer = csv.writer(csv_file)
                 if new_file:
                     writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
                                      "weight_g", "stable", "status"])
                 self.events.put(("info", f"Collecte demarree ({csv_path.name})"))
+                balance_answered = False
                 while not self.stop_flag.is_set():
                     next_read = time.monotonic() + INTERVAL_S
                     ser.reset_input_buffer()
                     ser.write(b"S\r\n")
                     raw = ser.read_until(b"\n", 64)
+                    if raw and not balance_answered:
+                        balance_answered = True
+                        self.events.put(("balance_connected", self.port))
                     timestamp = dt.datetime.now(dt.timezone.utc)
                     frame = raw.decode("ascii", errors="replace").strip()
                     weight, stable, status = parse_frame(frame)
@@ -142,6 +147,10 @@ class App:
         self.lbl_status = tk.Label(self.root, text="Arrete", font=("Helvetica", 11),
                                    bg=BG, fg="#333333")
         self.lbl_status.pack()
+        self.lbl_connection = tk.Label(
+            self.root, text="Connexion : recherche d'un port USB...",
+            font=("Helvetica", 10, "bold"), bg=BG, fg="#ef6c00")
+        self.lbl_connection.pack(pady=(3, 0))
         self.lbl_counts = tk.Label(self.root, text="", font=("Helvetica", 9),
                                    bg=BG, fg="#333333")
         self.lbl_counts.pack()
@@ -174,12 +183,20 @@ class App:
         self.port_var.set(ports[0] if len(ports) == 1 else "")
         if not ports:
             self.lbl_status.config(text="Branchez la balance USB puis relancez l'application", fg="#c62828")
+            self.lbl_connection.config(text="Connexion : aucun port USB detecte", fg="#c62828")
+        elif len(ports) == 1:
+            self.lbl_connection.config(text=f"Port USB detecte : {ports[0]}", fg="#ef6c00")
+        else:
+            self.lbl_connection.config(
+                text="Plusieurs ports USB detectes : selectionnez celui de la balance",
+                fg="#ef6c00")
 
     def start(self):
         port = self.port_var.get()
         if not port:
             self.refresh_ports()
             return
+        self.lbl_connection.config(text=f"Ouverture du port {port}...", fg="#ef6c00")
         self.caffeinate = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
         self.collector = Collector(port, self.events)
         self.collector.start()
@@ -200,6 +217,7 @@ class App:
         self.btn_start.set_enabled(True)
         self.btn_stop.set_enabled(False)
         self.lbl_status.config(text="Arrete", fg="#333333")
+        self.lbl_connection.config(text="Connexion : arretee", fg="#333333")
 
     def poll_events(self):
         try:
@@ -215,6 +233,15 @@ class App:
                 elif event[0] == "fatal":
                     self.stop()
                     self.lbl_status.config(text=event[1], fg="#c62828")
+                    self.lbl_connection.config(text="Connexion : echec", fg="#c62828")
+                elif event[0] == "port_open":
+                    self.lbl_connection.config(
+                        text=f"Port serie ouvert : {event[1]} - attente de la balance",
+                        fg="#ef6c00")
+                elif event[0] == "balance_connected":
+                    self.lbl_connection.config(
+                        text=f"BALANCE CONNECTEE : reponse recue sur {event[1]}",
+                        fg="#2e7d32")
                 else:
                     self.lbl_status.config(text=event[1])
         except queue.Empty:

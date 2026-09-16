@@ -6,6 +6,16 @@ build/
 __pycache__/
 data balance/*.csv
 
+# Environnements Python locaux
+.venv/
+.venv-*/
+venv/
+
+# Artefacts PyInstaller macOS
+build-macos/
+BalanceCollecteurMac/
+BalanceCollecteurMac.app/
+
 # Secrets / credentials
 flows_cred.json
 credentials.txt
