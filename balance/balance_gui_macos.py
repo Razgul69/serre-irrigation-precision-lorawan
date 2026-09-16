@@ -135,7 +135,8 @@ class App:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Balance Ohaus - Collecte Mac")
-        self.root.geometry("430x270")
+        self.root.geometry("640x380")
+        self.root.minsize(560, 340)
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
         self.collector: Collector | None = None
@@ -146,14 +147,17 @@ class App:
                                    bg=BG, fg=FG)
         self.lbl_weight.pack(pady=(15, 3))
         self.lbl_status = tk.Label(self.root, text="Arrete", font=("Helvetica", 11),
-                                   bg=BG, fg="#333333")
+                                   bg=BG, fg="#333333", wraplength=580,
+                                   justify=tk.CENTER)
         self.lbl_status.pack()
         self.lbl_connection = tk.Label(
             self.root, text="Connexion : recherche d'un port USB...",
-            font=("Helvetica", 10, "bold"), bg=BG, fg="#ef6c00")
+            font=("Helvetica", 10, "bold"), bg=BG, fg="#ef6c00",
+            wraplength=580, justify=tk.CENTER)
         self.lbl_connection.pack(pady=(3, 0))
         self.lbl_counts = tk.Label(self.root, text="", font=("Helvetica", 9),
-                                   bg=BG, fg="#333333")
+                                   bg=BG, fg="#333333", wraplength=580,
+                                   justify=tk.CENTER)
         self.lbl_counts.pack()
 
         port_frame = tk.Frame(self.root, bg=BG)
@@ -161,7 +165,7 @@ class App:
         tk.Label(port_frame, text="Port balance :", bg=BG, fg=FG).pack(side=tk.LEFT, padx=(0, 8))
         self.port_var = tk.StringVar()
         self.port_menu = ttk.Combobox(port_frame, textvariable=self.port_var,
-                                      state="readonly", width=32)
+                                      state="readonly", width=42)
         self.port_menu.pack(side=tk.LEFT)
         self.btn_refresh = tk.Button(port_frame, text="Actualiser", command=self.refresh_ports,
                          bg="#e0e0e0", fg=FG)
