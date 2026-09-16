@@ -80,7 +80,7 @@ class Collector(threading.Thread):
                 if new_file:
                     writer.writerow(["timestamp_utc", "monotonic_s", "raw_frame",
                                      "weight_g", "stable", "status"])
-                self.events.put(("info", f"Collecte demarree ({csv_path.name})"))
+                self.events.put(("info", f"Collecte sur {self.port} ({csv_path.name})"))
                 balance_answered = False
                 while not self.stop_flag.is_set():
                     next_read = time.monotonic() + INTERVAL_S
@@ -102,7 +102,8 @@ class Collector(threading.Thread):
                         csv_file.flush()
                     if status == "ok":
                         n_ok += 1
-                        self.events.put(("weight", weight, n_ok, n_err))
+                        self.events.put(("weight", weight, n_ok, n_err,
+                                         timestamp.astimezone().strftime("%H:%M:%S")))
                     else:
                         n_err += 1
                         self.events.put(("error", status, n_ok, n_err))
@@ -224,9 +225,10 @@ class App:
             while True:
                 event = self.events.get_nowait()
                 if event[0] == "weight":
-                    _, weight, n_ok, n_err = event
+                    _, weight, n_ok, n_err, read_time = event
                     self.lbl_weight.config(text=f"{weight:.1f} g")
-                    self.lbl_counts.config(text=f"{n_ok} mesures, {n_err} erreurs")
+                    self.lbl_counts.config(
+                        text=f"Derniere lecture {read_time} - {n_ok} mesures, {n_err} erreurs")
                 elif event[0] == "error":
                     _, message, n_ok, n_err = event
                     self.lbl_counts.config(text=f"{n_ok} mesures, {n_err} erreurs - {message}")
