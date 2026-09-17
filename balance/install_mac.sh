@@ -44,6 +44,8 @@ pip install --quiet pyserial pyinstaller
 # 3. Recuperation du script de collecte
 SCRIPT_URL="https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/balance_gui_macos.py"
 curl -fsSL "$SCRIPT_URL" -o balance_gui_macos.py
+curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/diagnose_serial_macos.py" \
+    -o diagnose_serial_macos.py
 echo "Script telecharge."
 
 # 4. Construction de l'application (rm -rf build/dist pour repartir proprement)
