@@ -39,7 +39,7 @@ if [ ! -x venv/bin/python3 ] || ! tk_ok venv/bin/python3; then
 fi
 source venv/bin/activate
 pip install --quiet --upgrade pip
-pip install --quiet pyserial pyinstaller
+pip install --quiet pyserial
 
 # 3. Recuperation du script de collecte
 SCRIPT_URL="https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/balance_gui_macos.py"
@@ -48,23 +48,38 @@ curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precisio
     -o diagnose_serial_macos.py
 echo "Script telecharge."
 
-# 4. Construction de l'application (rm -rf build/dist pour repartir proprement)
-rm -rf build dist
-python3 -m PyInstaller --windowed --noconfirm --name BalanceCollecteurMac balance_gui_macos.py
-
-# Forcer le mode clair : l'interface est concue pour un fond blanc
-/usr/libexec/PlistBuddy -c "Add :NSRequiresAquaSystemAppearance bool true" \
-    dist/BalanceCollecteurMac.app/Contents/Info.plist 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSRequiresAquaSystemAppearance true" \
-    dist/BalanceCollecteurMac.app/Contents/Info.plist
-
-# 5. Installation dans /Applications de l'utilisateur
+# 4. Bundle .app construit a la main : PyInstaller exige lipo/xcrun (outils Xcode)
+APP="$HOME/Applications/BalanceCollecteurMac.app"
 mkdir -p "$HOME/Applications"
-rm -rf "$HOME/Applications/BalanceCollecteurMac.app"
-cp -R dist/BalanceCollecteurMac.app "$HOME/Applications/"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS"
+
+cat > "$APP/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>BalanceCollecteurMac</string>
+    <key>CFBundleDisplayName</key><string>Balance Ohaus</string>
+    <key>CFBundleIdentifier</key><string>org.ird.balancecollecteur</string>
+    <key>CFBundleVersion</key><string>1.0</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleExecutable</key><string>launcher</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSRequiresAquaSystemAppearance</key><true/>
+</dict>
+</plist>
+PLIST
+
+cat > "$APP/Contents/MacOS/launcher" <<LAUNCHER
+#!/bin/bash
+cd "$APPDIR"
+exec "$APPDIR/venv/bin/python" "$APPDIR/balance_gui_macos.py"
+LAUNCHER
+chmod +x "$APP/Contents/MacOS/launcher"
 
 echo ""
 echo "=== Installation terminee ==="
-echo "Application : $HOME/Applications/BalanceCollecteurMac.app"
+echo "Application : $APP"
 echo "Donnees CSV : $HOME/Documents/BalanceCollecteur/data balance/"
 echo "Brancher la balance USB avant de lancer l'application."
