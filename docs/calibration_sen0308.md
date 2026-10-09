@@ -94,6 +94,74 @@ $$
 Astuce : la balance du projet remonte déjà le poids dans InfluxDB (`collect_balance.py`) ; si la sonde est sur le
 Nano ESP32 + `calib_sen0308.py`, les deux séries sont horodatées et se croisent directement dans Grafana.
 
+### Mini-protocole pas à pas sur Campbell (CR800 / CR1000) → `SEN_USE_VWC = True`
+
+Pré-requis : niveau 1 fait, `SEN_AIR_MV` / `SEN_WATER_MV` déjà dans le programme, programme chargé, sonde alimentée
+en 5 V par le datalogger. Durée : 1 à 2 semaines calendaires (séchage), ~15 min de manipulation par point.
+
+**J0 — Préparation**
+
+| # | Action | À noter |
+|---|---|---|
+| 1 | Peser le pot vide (sans trou de drainage, ou trou bouché) : $m_{pot}$. Le remplir d'eau à ras, peser. $V = (m_{plein} - m_{pot})$ en g = volume en **mL**. Vider, sécher. | $m_{pot}$, $V$ |
+| 2 | Remplir de substrat au tassement de culture (même geste qu'un rempotage), arroser légèrement pour qu'il tienne. | substrat, date |
+| 3 | Insérer la SEN0308 verticalement jusqu'à la **ligne repère**, au centre du pot. Si possible la TEROS à 5–10 cm. | — |
+| 4 | Fixer le câble de la sonde à un support (potence, pince) avec une boucle lâche vers le pot : le câble doit peser **de la même façon à chaque pesée**. Marquer la position du pot sur la balance. | — |
+| 5 | Saturer : arroser jusqu'à ruissellement, laisser drainer 30 min (trou ouvert), puis boucher le trou. | — |
+
+**Chaque point de mesure (point 1 = saturé, puis tous les 1–3 jours selon le séchage ; viser 5 à 7 points)**
+
+| # | Action | À noter |
+|---|---|---|
+| a | Dans LoggerNet/PC400 → table `Public` : mettre `CalibOn = True`. Attendre **5 min** sans toucher le pot. | heure |
+| b | Collecter la table `CalibSEN0308` : prendre la **moyenne des 10 dernières lignes** de `SEN_mV_Avg` (= 5 min). Vérifier `SEN_mV_Std` < 10 mV, sinon attendre encore. Noter aussi `WaterPot_kPa` et `SoilTemp_C`. | $mV_i$, kPa, T° |
+| c | Remettre `CalibOn = False`. | — |
+| d | Poser le pot sur la balance (position marquée, câble dans sa boucle), lire le poids **stable** (`S S` sur le collecteur) : $m_i$. | $m_i$ |
+| e | Reposer le pot au même endroit. Entre deux points : laisser sécher à l'air (serre, ventilateur) ; **ne jamais** retirer ni enfoncer la sonde. | — |
+
+Répartir les points : saturé → 1–2 jours → 3–4 jours → … jusqu'à ce que la plante flétrirait (indice ≈ 10–20 %).
+Si le séchage est trop lent, ventiler ; s'il est trop rapide (point sautés), couvrir partiellement.
+
+**Dernier point et point sec**
+
+| # | Action | À noter |
+|---|---|---|
+| 6 | Faire un dernier point normal (a → d). Puis, sans attendre, peser le pot **avec** sonde ($m_{avec}$) et, après avoir retiré la sonde, **sans** sonde ($m_{sans}$). $\Delta_{sonde} = m_{avec} - m_{sans}$ = masse apparente de la sonde + câble, à soustraire de tous les $m_i$. | $\Delta_{sonde}$ |
+| 7 | Étuve : 105 °C (substrat minéral) ou 70 °C (tourbe, fibre de coco, terreau) jusqu'à masse constante : peser à 24 h et 48 h, écart < 0,1 % → stop. Peser pot + substrat sec : $m_{sec}$. | $m_{sec}$ |
+
+**Calcul** (une ligne par point, g et mL) :
+
+$$
+\theta_i\,[\%] = 100 \times \frac{(m_i - \Delta_{sonde}) - m_{sec}}{V}
+$$
+
+Contrôle de vraisemblance : point saturé ≈ 40–60 % pour un terreau/tourbe, 30–45 % pour un substrat minéral ;
+dernier point ≈ 5–15 %. Une valeur > 70 % ou < 0 % trahit une erreur de $V$, de $m_{sec}$ ou de câble.
+
+**Ajustement et saisie dans le programme**
+
+1. Créer `points_<sonde>_<substrat>.csv` avec l'en-tête `mv,theta_pct` et une ligne par point.
+2. `python tools/calib_sen0308.py --fit points_<sonde>_<substrat>.csv` → affiche `SEN_A`, `SEN_B`, $R^2$ et les
+   résidus. Accepter si $R^2 \ge 0{,}95$ et résidu max < 3 % vol ; sinon essayer `--deg 2` (voir remarque) ou
+   refaire les points aberrants.
+3. Dans `teros22_sen0308_cr800.CR8` (ou `_cr1000.CR1`) :
+   ```
+   Const SEN_USE_VWC  = True
+   Const SEN_A = -0.018737     'valeur affichee par --fit
+   Const SEN_B = 50.824
+   ```
+   Dater en commentaire (sonde n°, substrat, date). Compiler, envoyer.
+4. Vérifier dans `Public` que `SEN_VWC_pct` n'est plus `NAN` et tombe dans la plage attendue.
+5. **Validation** : un point indépendant (une pesée + lecture) sur un autre pot du même substrat → écart entre θ
+   pesé et `SEN_VWC_pct` < 3 % vol. Archiver le CSV et la fiche dans `docs/`.
+
+Remarques :
+- La droite n'est valable que pour **ce substrat, ce tassement et cette alimentation 5 V**. Nouveau substrat =
+  nouveau niveau 2 ; nouveau datalogger = refaire au moins le niveau 1.
+- Si `--deg 2` est nécessaire, remplacer dans le programme la ligne `SEN_VWC_pct = SEN_A * SEN_mV + SEN_B` par
+  `SEN_VWC_pct = SEN_A2 * SEN_mV^2 + SEN_A * SEN_mV + SEN_B` et ajouter `Const SEN_A2`.
+- `SEN_Index_pct` (niveau 1) reste calculé en parallèle : il sert de garde-fou si la droite dérive.
+
 ---
 
 ## Niveau 3 — Co-localisation avec la TEROS (seuils d'irrigation)
