@@ -162,6 +162,74 @@ Remarques :
   `SEN_VWC_pct = SEN_A2 * SEN_mV^2 + SEN_A * SEN_mV + SEN_B` et ajouter `Const SEN_A2`.
 - `SEN_Index_pct` (niveau 1) reste calculé en parallèle : il sert de garde-fou si la droite dérive.
 
+### Variante « réhumidification » : partir d'un terreau déjà sec et remonter jusqu'à la saturation
+
+À utiliser quand on dispose d'un volume de terreau **séché à l'avance** (≈ volume du pot). On ajoute l'eau par
+paliers connus au lieu d'attendre le séchage : la calibration tient en **une journée**. Les points sont obtenus en
+mélangeant l'eau au substrat hors du pot puis en re-remplissant le pot à l'identique — c'est ce qui garantit une
+humidité homogène (le terreau sec est hydrophobe : versé par-dessus, l'eau ruisselle et le capteur verrait un
+gradient).
+
+Attention au vocabulaire : le « 100 % » du niveau 1 est la sonde **dans l'eau** (`SEN_WATER_MV`). Un terreau saturé
+donnera un indice intermédiaire (typiquement 60–80 %) : c'est normal, et c'est précisément ce que mesure le niveau 2.
+
+**Matériel** : le terreau sec, pot repère (volume $V$ connu, trait de remplissage marqué), balance, grand sac
+plastique ou seau avec couvercle, eau tiède, pichet gradué, CR800 avec `CalibOn`, étuve ou four (facultatif).
+
+**A — Point zéro (terreau sec)**
+
+| # | Action | À noter |
+|---|---|---|
+| 1 | Volume du pot : peser vide ($m_{pot}$), remplir d'eau à ras, repeser → $V$ en mL. Vider, sécher. Marquer le trait de remplissage. | $m_{pot}$, $V$ |
+| 2 | Humidité résiduelle (recommandé) : prélever 50–100 g de terreau « sec », peser ($m_h$), étuve 70 °C 24 h, repeser ($m_d$). $w_{res} = (m_h - m_d)/m_d$. Un terreau séché à l'air garde 5–15 % d'eau en masse. Sans étuve : $w_{res} = 0{,}10$ par défaut et le noter. | $w_{res}$ |
+| 3 | Remplir le pot de terreau sec jusqu'au trait avec le tassement de culture. Peser → masse de substrat $m_s = m_{total} - m_{pot}$. Densité apparente $\rho_b = m_s / V$ (attendu 0,15–0,35 g/mL). | $m_s$, $\rho_b$ |
+| 4 | Insérer la SEN0308 jusqu'à la ligne repère, attendre 15 min, `CalibOn = True`, 5 min, moyenne des 10 lignes de `CalibSEN0308` → $mV_0$. `CalibOn = False`. | $mV_0$ |
+| 5 | $\theta_0 = 100 \times w_{res} \times \rho_b$ (≈ 1–4 % vol). Retirer la sonde. | $\theta_0$ |
+
+**B — Paliers de réhumidification** (viser 5 paliers de ~10 % vol, puis la saturation)
+
+Masse d'eau par palier : $\Delta W = 0{,}10 \times V$ grammes (ex. pot de 2 000 mL → 200 g d'eau par palier).
+
+| # | Action | À noter |
+|---|---|---|
+| 6 | Vider **tout** le terreau du pot dans le sac/seau. Ajouter $\Delta W$ g d'eau tiède (peser au pichet, pas au volume), en 3–4 fois en malaxant. Fermer, laisser reposer **30 min**, re-malaxer. | $W_{cumul}$ |
+| 7 | Remettre **tout** le terreau dans le pot jusqu'au trait, même geste de tassement (le terreau humide gonfle : tasser légèrement pour revenir au trait ; s'il en reste, peser le reliquat $r$ et le déduire : eau et solide au prorata $r/(m_s+W_{cumul})$). Peser le pot plein → contrôle : $m_{pot} + m_s + W_{cumul}$ à ± 1 % près. | $m_{plein,i}$ |
+| 8 | Insérer la sonde jusqu'à la ligne repère, attendre 15 min (température), `CalibOn = True`, 5 min, moyenne → $mV_i$ ; vérifier `SEN_mV_Std` < 10 mV. `CalibOn = False`, retirer la sonde. | $mV_i$ |
+| 9 | $\theta_i = 100 \times \dfrac{W_{cumul} + w_{res} \, m_s}{V}$ (le reliquat $r$ éventuel enlevé). Répéter 6 → 9. | $\theta_i$ |
+
+**C — Point saturé (capacité de rétention du pot)**
+
+| # | Action | À noter |
+|---|---|---|
+| 10 | Après le dernier palier, sonde en place : arroser lentement jusqu'à ce que l'eau affleure en surface, laisser drainer 30 min trou ouvert, boucher. Peser le pot → $W_{sat} = m_{plein} - m_{pot} - m_s$. Lire $mV_{sat}$ (15 min + 5 min `CalibOn`). | $W_{sat}$, $mV_{sat}$ |
+| 11 | $\theta_{sat} = 100 \times (W_{sat} + w_{res} m_s)/V$ — attendu 45–70 % pour un terreau. Au-delà de 80 % : vérifier $V$. | $\theta_{sat}$ |
+
+**D — Contrôle d'hystérésis (facultatif mais conseillé, 2–3 jours)**
+
+Laisser ce pot saturé sécher à l'air sans toucher la sonde et faire 2 points « en séchage » (pesée + $mV$, méthode
+du mini-protocole précédent). S'ils tombent sur la droite à ± 3 % vol, la calibration vaut dans les deux sens.
+
+**E — Ajustement**
+
+CSV `mv,theta_pct` avec les points 0, paliers, saturé (6–8 lignes) → `python tools/calib_sen0308.py --fit …` →
+`SEN_A`, `SEN_B` → `SEN_USE_VWC = True` dans le programme CR800, compiler, envoyer, vérifier `SEN_VWC_pct`.
+
+Points de vigilance :
+- Toujours **toute** la masse de terreau dans le pot, jusqu'au trait : c'est ce qui maintient $\rho_b$ constant.
+- Même profondeur de sonde à chaque palier (ligne repère) ; insérer d'un seul geste, sans remuer.
+- Les 15 min d'attente servent à ce que l'eau tiède revienne à la température ambiante (la sonde y est sensible).
+- Travailler à l'ombre, sac fermé entre les étapes : l'évaporation pendant la manipulation doit rester < 1 % de $\Delta W$.
+
+| Palier | $W_{cumul}$ (g) | $m_{plein}$ (g) | $mV$ | `Std` | $\theta$ (%) |
+|---|---|---|---|---|---|
+| 0 (sec) | 0 | | | | |
+| 1 | | | | | |
+| 2 | | | | | |
+| 3 | | | | | |
+| 4 | | | | | |
+| 5 | | | | | |
+| sat | | | | | |
+
 ---
 
 ## Niveau 3 — Co-localisation avec la TEROS (seuils d'irrigation)
