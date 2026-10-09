@@ -4,6 +4,7 @@ Deux programmes :
 
 - `teros22_cr1000.CR1` : TEROS 22 seule.
 - `teros22_sen0308_cr1000.CR1` : TEROS 22 + sonde capacitive DFRobot SEN0308 sur le meme datalogger (table `MesuresSol`), avec une table `CalibSEN0308` activable pour la calibration.
+- `teros22_sen0308_cr800.CR8` : meme programme pour **CR800** (cablage identique : TEROS sur C3, SEN0308 sur 5V / G / 1H). Copie deposee dans `D:\Mes Programmes\SCWin\sys\teros sen0308 v1.CR8`.
 
 La balance est acquise separement par l'ordinateur.
 
