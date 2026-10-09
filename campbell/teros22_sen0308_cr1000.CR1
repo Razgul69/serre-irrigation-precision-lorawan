@@ -1,0 +1,90 @@
+'CR1000 - Acquisition METER TEROS 22 (SDI-12) + DFRobot SEN0308 (analogique)
+'La balance est volontairement exclue de ce programme.
+'
+'Cablage SEN0308 : rouge -> 5V (borne 5V du CR1000), noir -> G, jaune -> SE1 (borne 1H)
+'Cablage TEROS 22 : alimentation -> 12V, masse -> G, SDI-12 -> C3
+'
+'Calibration SEN0308 (voir docs/calibration_sen0308.md) :
+'  niveau 1 : SEN_AIR_MV / SEN_WATER_MV mesures sur CE datalogger (alim 5 V)
+'  niveau 2 (optionnel) : SEN_A / SEN_B de la droite theta[%] = SEN_A * mV + SEN_B
+
+Const SDI_ADDR  = 0       'Adresse SDI-12 (0 = valeur usine)
+Const SDI_PORT  = 3       'Port SDI-12 : 3 = borne C3 sur CR1000
+Const SEN_CHAN  = 1       'Canal single-ended du SEN0308 (1 = borne 1H)
+Const SCAN_S    = 10      'Une mesure toutes les 10 s (TEROS 22 repond en ~1 s)
+Const TABLE_MIN = 15      'Un enregistrement toutes les 15 minutes
+
+'--- Constantes de calibration SEN0308 (a remplacer par vos valeurs) ---
+Const SEN_AIR_MV   = 2900   'lecture dans l'air (mV) = indice 0 %
+Const SEN_WATER_MV = 50     'lecture dans l'eau (mV) = indice 100 %
+Const SEN_USE_VWC  = False  'True une fois la calibration gravimetrique faite
+Const SEN_A = -0.0150       'theta[%] = SEN_A * mV + SEN_B
+Const SEN_B = 48.0
+
+Public PTemp_C
+Public Batt_V
+Public TEROS22(2)
+Public WaterPot_kPa
+Public SoilTemp_C
+Public SEN_mV
+Public SEN_Index_pct
+Public SEN_VWC_pct
+
+Units PTemp_C = Deg C
+Units Batt_V = Volts
+Units WaterPot_kPa = kPa
+Units SoilTemp_C = Deg C
+Units SEN_mV = mV
+Units SEN_Index_pct = %
+Units SEN_VWC_pct = % vol
+
+DataTable(MesuresSol, True, -1)
+    DataInterval(0, TABLE_MIN, Min, 10)
+    Minimum(1, Batt_V, FP2, False, False)
+    Sample(1, PTemp_C, FP2)
+    Sample(1, WaterPot_kPa, IEEE4)
+    Sample(1, SoilTemp_C, FP2)
+    Average(1, SEN_mV, IEEE4, False)
+    Average(1, SEN_Index_pct, FP2, False)
+    Average(1, SEN_VWC_pct, FP2, False)
+EndTable
+
+'Table de calibration : 1 ligne / 30 s (moyenne de 3 scans), a activer via CalibOn = True dans Public
+Public CalibOn As Boolean
+DataTable(CalibSEN0308, CalibOn, 2000)
+    DataInterval(0, 30, Sec, 10)
+    Average(1, SEN_mV, IEEE4, False)
+    StdDev(1, SEN_mV, IEEE4, False)
+    Sample(1, WaterPot_kPa, IEEE4)
+    Sample(1, SoilTemp_C, FP2)
+EndTable
+
+BeginProg
+    Scan(SCAN_S, Sec, 0, 0)
+        PanelTemp(PTemp_C, 50)
+        Battery(Batt_V)
+
+        'TEROS 22 : M! lance la mesure puis recupere automatiquement les donnees.
+        'TEROS22(1) = potentiel matriciel (kPa), TEROS22(2) = temperature du sol (deg C)
+        SDI12Recorder(TEROS22(), SDI_PORT, SDI_ADDR, "M!", 1.0, 0)
+        WaterPot_kPa = TEROS22(1)
+        SoilTemp_C = TEROS22(2)
+
+        'SEN0308 : sortie 0-3 V, decroissante avec l'humidite. Plage 5000 mV, rejet 50 Hz.
+        VoltSE(SEN_mV, 1, mV5000, SEN_CHAN, True, 0, _50Hz, 1.0, 0)
+
+        SEN_Index_pct = 100 * (SEN_AIR_MV - SEN_mV) / (SEN_AIR_MV - SEN_WATER_MV)
+        If SEN_Index_pct < 0 Then SEN_Index_pct = 0
+        If SEN_Index_pct > 100 Then SEN_Index_pct = 100
+
+        If SEN_USE_VWC Then
+            SEN_VWC_pct = SEN_A * SEN_mV + SEN_B
+            If SEN_VWC_pct < 0 Then SEN_VWC_pct = 0
+        Else
+            SEN_VWC_pct = NAN
+        EndIf
+
+        CallTable(MesuresSol)
+        CallTable(CalibSEN0308)
+    NextScan
+EndProg

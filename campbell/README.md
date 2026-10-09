@@ -1,6 +1,21 @@
-# TEROS 22 sur Campbell CR1000
+# TEROS 22 (+ DFRobot SEN0308) sur Campbell CR1000
 
-Le programme `teros22_cr1000.CR1` mesure uniquement la TEROS 22. La balance sera acquise separement par l'ordinateur.
+Deux programmes :
+
+- `teros22_cr1000.CR1` : TEROS 22 seule.
+- `teros22_sen0308_cr1000.CR1` : TEROS 22 + sonde capacitive DFRobot SEN0308 sur le meme datalogger (table `MesuresSol`), avec une table `CalibSEN0308` activable pour la calibration.
+
+La balance est acquise separement par l'ordinateur.
+
+## SEN0308 (sonde capacitive analogique)
+
+- rouge -> borne `5V` du CR1000 (la sonde accepte 3,3 - 5,5 V ; **ne pas** brancher sur 12V) ;
+- noir -> `G` ;
+- jaune (signal 0 - 3 V) -> `1H` (single-ended 1, `VoltSE` plage mV5000).
+
+Calibration : suivre `docs/calibration_sen0308.md`. Mettre `CalibOn = True` dans la table `Public` : la table `CalibSEN0308` enregistre alors moyenne et ecart-type de `SEN_mV` toutes les 30 s (air, eau, puis chaque point gravimetrique). Reporter `SEN_AIR_MV` / `SEN_WATER_MV` (et `SEN_A` / `SEN_B` avec `SEN_USE_VWC = True` apres calibration gravimetrique) en tete du programme, recompiler et renvoyer.
+
+Sorties : `SEN_mV` (brut), `SEN_Index_pct` (indice relatif 0-100 %), `SEN_VWC_pct` (teneur en eau volumique, NAN tant que `SEN_USE_VWC = False`).
 
 ## Cablage
 

@@ -20,3 +20,5 @@ BalanceCollecteurMac.app/
 flows_cred.json
 credentials.txt
 *.token
+
+data sen0308/*.csv

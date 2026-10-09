@@ -41,6 +41,7 @@ flowchart LR
 | Élément | Référence | Rôle |
 |---|---|---|
 | Sonde tensiométrique | METER TEROS 21 | Potentiel matriciel + T° sol (SDI-12) |
+| Sonde capacitive (complément) | DFRobot Gravity SEN0308 V2.0 | Indice d'humidité relatif / θ après calibration (analogique 0–3 V) — sur CR1000 (`1H`) ou Arduino Nano ESP32 (`A0`) |
 | Convertisseur | Dragino SDI-12-LB / SDI-12-LS | SDI-12 → LoRaWAN, alimenté batterie |
 | Passerelle | Passerelle LoRaWAN 868 MHz (serre) | Uplink/downlink vers TTN |
 | Contrôleur vanne | ESP32 + module LoRaWAN (RFM95/SX1276) | Pilotage électrovanne + comptage débit |
@@ -52,12 +53,27 @@ flowchart LR
 
 ```
 firmware/esp32_valve_controller/   # Firmware PlatformIO ESP32 (vanne + débitmètre + LoRaWAN)
-ttn/                               # Décodeurs de payload TTN (TEROS21, contrôleur vanne)
+firmware/esp32_nano_sen0308/       # Firmware Nano ESP32 : SEN0308 (série CSV + calibration, option LoRaWAN)
+campbell/                          # Programmes CR1000 : TEROS 22 seule, ou TEROS 22 + SEN0308
+ttn/                               # Décodeurs de payload TTN (TEROS21, contrôleur vanne, SEN0308)
+tools/calib_sen0308.py             # Enregistrement série + ajustement gravimétrique SEN0308
+docs/calibration_sen0308.md        # Protocole de calibration SEN0308 (3 niveaux)
 server/docker-compose.yml          # Stack Node-RED + InfluxDB + Grafana
 server/nodered/                    # Flow d'orchestration (seuils, downlinks)
 grafana/                           # Dashboard d'exemple
 docs/images/                       # Photos et schémas du montage
 ```
+
+## 🧪 Sonde DFRobot SEN0308 (en complément de la TEROS)
+
+La SEN0308 fournit un **indice relatif** (0 % = air, 100 % = eau) qui dépend du substrat et de l'alimentation : elle doit être calibrée sur la chaîne de mesure définitive — protocole dans [docs/calibration_sen0308.md](docs/calibration_sen0308.md).
+
+| Option | Câblage | Fichier | Avantage |
+|---|---|---|---|
+| **A — Campbell CR1000** (recommandé) | rouge→`5V`, noir→`G`, jaune→`1H` | [campbell/teros22_sen0308_cr1000.CR1](campbell/teros22_sen0308_cr1000.CR1) | TEROS et SEN0308 horodatées dans la même table → co-localisation directe (niveau 3) |
+| **B — Arduino Nano ESP32** | rouge→`3V3`, noir→`GND`, jaune→`A0` | [firmware/esp32_nano_sen0308/](firmware/esp32_nano_sen0308/) + [tools/calib_sen0308.py](tools/calib_sen0308.py) | Autonome, CSV série + InfluxDB ; variante LoRaWAN (RFM95) avec décodeur [ttn/decoder_sen0308.js](ttn/decoder_sen0308.js) |
+
+Calibration rapide (option B) : `python tools/calib_sen0308.py --port COM5 --ref air` puis `--ref water`, reporter `AIR_MV`/`WATER_MV` dans `config.h`.
 
 ## ⚙️ Seuils d'irrigation (exemple)
 
@@ -82,7 +98,8 @@ Les seuils sont configurables par zone dans Node-RED (`server/nodered/`).
 | Étape | État |
 |---|---|
 | Firmware ESP32 vanne + débitmètre | ✅ Écrit (à flasher/tester) |
-| Décodeurs TTN (TEROS21, vanne) | ✅ Écrits |
+| Décodeurs TTN (TEROS21, vanne, SEN0308) | ✅ Écrits |
+| Sonde DFRobot SEN0308 : protocole de calibration, programme CR1000, firmware Nano ESP32, outil Python | ✅ Écrits (09/10/2026) — calibration terrain à faire |
 | Stack Docker Node-RED/InfluxDB/Grafana | ✅ Opérationnelle en local |
 | Flux Node-RED « IoT Irrigation Piloté » | ✅ Déployé — dashboard `/ui` : jauge kPa, seuils réglables, mode auto, boutons OUVRIR/FERMER par zone |
 | Export du flux | ✅ [server/nodered/flow_iot_irrigation_pilote.json](server/nodered/flow_iot_irrigation_pilote.json) (importable) |
