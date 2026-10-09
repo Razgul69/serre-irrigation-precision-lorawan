@@ -63,7 +63,27 @@ p("Sécurités embarquées dans l'ESP32 (autonomes même en cas de perte réseau
 p("Garde-fous côté serveur : anti-rebond 30 min entre cycles, alerte si vanne ouverte sans débit "
   "(vanne HS/fuite), alerte stress hydrique si potentiel < -80 kPa.")
 
-h("3 bis. Sonde DFRobot SEN0308 — calibration et intégration")
+h("3 bis. Pré-manips — banc de laboratoire (avant déploiement LoRaWAN)")
+p("Avant l'installation en serre, les capteurs sont caractérisés sur un banc filaire : un pot sur balance, "
+  "une TEROS 21/22 sur datalogger Campbell, et la sonde capacitive DFRobot SEN0308 en comparaison. "
+  "Objectif : relation poids (évapotranspiration) / potentiel matriciel / indice SEN0308 par substrat, "
+  "pour fixer les seuils d'irrigation. Ces éléments ne sont pas requis pour le système final.")
+p("Balance Ohaus DP15/M — interfaces PC et Mac (dossier balance/)", bold=True)
+table(["Plateforme", "Fichier", "Fonctionnement"], [
+    ["Windows (PC)", "balance_gui.py → BalanceCollecteur.exe", "Fenêtre Marche/Arrêt, détection auto du port USB, lecture SICS toutes les 5 s, CSV incrémental, envoi InfluxDB local, veille PC bloquée"],
+    ["macOS", "balance_gui_macos.py, install_mac.sh, build_macos.sh", "Même interface, CSV local uniquement, indicateurs port détecté / port ouvert / balance connectée ; install_mac.sh installe Python 3.12 + Tk 8.6"],
+    ["Ligne de commande", "collect_balance.py", "python collect_balance.py --port COM3 --interval 5 [--no-influx]"],
+    ["Diagnostic", "diagnose_serial.py, diagnose_serial_macos.py, DIAGNOSTIC.md", "Test adaptateur / port / réponse balance étape par étape"],
+])
+p("Datalogger Campbell (dossier campbell/)", bold=True)
+table(["Programme", "Cible", "Contenu"], [
+    ["teros22_cr1000.CR1", "CR1000", "TEROS 22 seule (SDI-12 sur C3), table 15 min"],
+    ["teros22_sen0308_cr1000.CR1", "CR1000", "TEROS 22 + SEN0308 (5V / G / 1H), tables MesuresSol + CalibSEN0308"],
+    ["teros22_sen0308_cr800.CR8", "CR800", "Identique pour CR800"],
+])
+p("La balance est volontairement hors datalogger : acquise par le PC/Mac et croisée par horodatage.")
+
+h("3 ter. Pré-manip — Sonde DFRobot SEN0308 : calibration et intégration")
 p("La SEN0308 est une sonde capacitive analogique (0-3 V, décroissante avec l'humidité). Elle fournit un "
   "indice relatif dépendant du substrat, du tassement et de la tension d'alimentation : elle doit être "
   "calibrée sur la chaîne de mesure définitive. Protocole complet : docs/calibration_sen0308.md.")
@@ -73,7 +93,7 @@ table(["Niveau", "Résultat", "Méthode"], [
     ["3 — Co-localisation TEROS", "Seuils d'irrigation sur l'indice", "SEN0308 et TEROS côte à côte sur 1-2 cycles ; lire l'indice à -40 et -10 kPa"],
 ])
 table(["Option", "Câblage", "Fichiers"], [
-    ["A — Campbell CR1000 (recommandé)", "rouge→5V, noir→G, jaune→1H", "campbell/teros22_sen0308_cr1000.CR1 (tables MesuresSol + CalibSEN0308)"],
+    ["A — Campbell CR1000 / CR800 (recommandé)", "rouge→5V, noir→G, jaune→1H", "campbell/teros22_sen0308_cr1000.CR1, campbell/teros22_sen0308_cr800.CR8"],
     ["B — Arduino Nano ESP32", "rouge→3V3, noir→GND, jaune→A0", "firmware/esp32_nano_sen0308/, tools/calib_sen0308.py, ttn/decoder_sen0308.js (variante LoRaWAN, port 3)"],
 ])
 
@@ -90,7 +110,8 @@ h("5. Structure du dépôt")
 table(["Dossier", "Contenu"], [
     ["firmware/esp32_valve_controller/", "Firmware PlatformIO (LMIC, vanne, débitmètre, sécurités)"],
     ["firmware/esp32_nano_sen0308/", "Firmware Nano ESP32 : SEN0308, CSV série, capture air/eau, option LoRaWAN"],
-    ["campbell/", "Programmes CR1000 : TEROS 22 seule ou TEROS 22 + SEN0308"],
+    ["balance/", "[Pré-manip] Collecteur balance Ohaus : interfaces Windows et macOS, CLI, diagnostics"],
+    ["campbell/", "[Pré-manip] Programmes CR1000 / CR800 : TEROS 22 seule ou TEROS 22 + SEN0308"],
     ["tools/calib_sen0308.py", "Enregistrement série SEN0308 (+InfluxDB) et ajustement gravimétrique"],
     ["docs/calibration_sen0308.md", "Protocole de calibration SEN0308 (3 niveaux) et fiche de relevé"],
     ["ttn/", "Décodeurs de payload TTN (TEROS21, contrôleur vanne, SEN0308)"],
@@ -112,9 +133,11 @@ for step in [
 
 h("7. État d'avancement (09/10/2026)")
 table(["Étape", "État"], [
+    ["Pré-manip — collecteur balance Ohaus (Windows exe + macOS), CSV + InfluxDB, dashboard Grafana poids", "OPÉRATIONNEL (PC) ; Mac validé en diagnostic série"],
+    ["Pré-manip — programmes Campbell CR1000/CR800 TEROS 22 (+ SEN0308)", "ÉCRITS (TEROS seule testée sur CR800)"],
+    ["Pré-manip — sonde SEN0308 : protocole, firmware Nano ESP32, outil Python", "ÉCRITS — calibration terrain À FAIRE"],
     ["Firmware ESP32 vanne + débitmètre", "FAIT (à flasher/tester)"],
     ["Décodeurs TTN (TEROS21, vanne, SEN0308)", "FAIT"],
-    ["Sonde SEN0308 : protocole, programme CR1000, firmware Nano ESP32, outil Python", "FAIT (09/10/2026) — calibration terrain À FAIRE"],
     ["Stack Docker Node-RED/InfluxDB/Grafana", "OPÉRATIONNELLE en local (ports 11880/18086/13000)"],
     ["Flux Node-RED « IoT Irrigation Piloté »", "DÉPLOYÉ : dashboard /ui avec jauge kPa, seuils réglables, mode auto, boutons OUVRIR/FERMER par zone, écriture InfluxDB, downlinks TTN"],
     ["Export du flux (importable)", "server/nodered/flow_iot_irrigation_pilote.json"],

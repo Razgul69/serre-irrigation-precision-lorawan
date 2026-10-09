@@ -53,24 +53,53 @@ flowchart LR
 
 ```
 firmware/esp32_valve_controller/   # Firmware PlatformIO ESP32 (vanne + débitmètre + LoRaWAN)
-firmware/esp32_nano_sen0308/       # Firmware Nano ESP32 : SEN0308 (série CSV + calibration, option LoRaWAN)
-campbell/                          # Programmes CR1000 : TEROS 22 seule, ou TEROS 22 + SEN0308
+firmware/esp32_nano_sen0308/       # [Pré-manip] Firmware Nano ESP32 : SEN0308 (série CSV + calibration, option LoRaWAN)
+campbell/                          # [Pré-manip] Programmes CR1000 / CR800 : TEROS 22 seule, ou TEROS 22 + SEN0308
+balance/                           # [Pré-manip] Collecteur balance Ohaus DP15/M : interfaces PC (Windows) et Mac
+tools/calib_sen0308.py             # [Pré-manip] Enregistrement série + ajustement gravimétrique SEN0308
+docs/calibration_sen0308.md        # [Pré-manip] Protocole de calibration SEN0308 (3 niveaux)
+DIAGNOSTIC.md                      # [Pré-manip] Diagnostic liaison série balance sur macOS
 ttn/                               # Décodeurs de payload TTN (TEROS21, contrôleur vanne, SEN0308)
-tools/calib_sen0308.py             # Enregistrement série + ajustement gravimétrique SEN0308
-docs/calibration_sen0308.md        # Protocole de calibration SEN0308 (3 niveaux)
 server/docker-compose.yml          # Stack Node-RED + InfluxDB + Grafana
 server/nodered/                    # Flow d'orchestration (seuils, downlinks)
-grafana/                           # Dashboard d'exemple
+grafana/                           # Dashboards (sonde kPa, température, poids balance)
 docs/images/                       # Photos et schémas du montage
 ```
 
-## 🧪 Sonde DFRobot SEN0308 (en complément de la TEROS)
+## 🔬 Pré-manips (banc de laboratoire, avant déploiement LoRaWAN)
+
+Avant l'installation en serre, les capteurs sont caractérisés sur un **banc filaire** (pas de LoRaWAN) : un pot sur balance, une TEROS 21/22 sur datalogger Campbell, et la sonde capacitive DFRobot SEN0308 en comparaison. Le but est d'obtenir la relation **poids (évapotranspiration) ↔ potentiel matriciel ↔ indice SEN0308** pour chaque substrat et fixer les seuils d'irrigation. Tout ce qui est marqué *[Pré-manip]* relève de cette phase et n'est pas requis pour le système final.
+
+### Balance Ohaus DP15/M — interfaces PC et Mac (`balance/`)
+
+La balance est lue en RS-232 (protocole SICS, commande `S`, 9600 8N1) via un adaptateur USB-série.
+
+| Plateforme | Fichier | Fonctionnement |
+|---|---|---|
+| **Windows (PC)** | [balance/balance_gui.py](balance/balance_gui.py) → exe `BalanceCollecteur.exe` (PyInstaller, non versionné) | Fenêtre Marche/Arrêt : détection automatique du port USB (COM3 par défaut), lecture toutes les 5 s, CSV incrémental dans `data balance/`, **envoi vers InfluxDB local** (bucket `sondes`), mise en veille du PC bloquée pendant la collecte |
+| **macOS** | [balance/balance_gui_macos.py](balance/balance_gui_macos.py), [balance/install_mac.sh](balance/install_mac.sh), [balance/build_macos.sh](balance/build_macos.sh) | Même interface, **CSV local uniquement** ; indicateurs d'état séparés (port détecté / port ouvert / balance connectée) ; `install_mac.sh` installe Python 3.12 + Tk 8.6 et crée l'app `~/BalanceCollecteur` |
+| **Ligne de commande** | [balance/collect_balance.py](balance/collect_balance.py) | `python collect_balance.py --port COM3 --interval 5 [--no-influx]` |
+| **Diagnostic** | [balance/diagnose_serial.py](balance/diagnose_serial.py), [balance/diagnose_serial_macos.py](balance/diagnose_serial_macos.py), [DIAGNOSTIC.md](DIAGNOSTIC.md) | Teste adaptateur, port et réponse de la balance étape par étape |
+
+Parseur SICS testé dans [tests/test_balance_parser.py](tests/test_balance_parser.py) (CI GitHub Actions). Dashboard Grafana du poids : [grafana/dashboards/balance_poids.json](grafana/dashboards/balance_poids.json).
+
+### Datalogger Campbell (`campbell/`)
+
+| Programme | Cible | Contenu |
+|---|---|---|
+| [teros22_cr1000.CR1](campbell/teros22_cr1000.CR1) | CR1000 | TEROS 22 seule (SDI-12 sur C3), table 15 min |
+| [teros22_sen0308_cr1000.CR1](campbell/teros22_sen0308_cr1000.CR1) | CR1000 | TEROS 22 + SEN0308 (5V / G / 1H), table `MesuresSol` + table `CalibSEN0308` |
+| [teros22_sen0308_cr800.CR8](campbell/teros22_sen0308_cr800.CR8) | CR800 | Identique pour CR800 |
+
+La balance est volontairement **hors datalogger** : elle est acquise par le PC/Mac et croisée avec les données Campbell/InfluxDB par horodatage.
+
+## 🧪 [Pré-manip] Sonde DFRobot SEN0308 (en complément de la TEROS)
 
 La SEN0308 fournit un **indice relatif** (0 % = air, 100 % = eau) qui dépend du substrat et de l'alimentation : elle doit être calibrée sur la chaîne de mesure définitive — protocole dans [docs/calibration_sen0308.md](docs/calibration_sen0308.md).
 
 | Option | Câblage | Fichier | Avantage |
 |---|---|---|---|
-| **A — Campbell CR1000** (recommandé) | rouge→`5V`, noir→`G`, jaune→`1H` | [campbell/teros22_sen0308_cr1000.CR1](campbell/teros22_sen0308_cr1000.CR1) | TEROS et SEN0308 horodatées dans la même table → co-localisation directe (niveau 3) |
+| **A — Campbell CR1000 / CR800** (recommandé) | rouge→`5V`, noir→`G`, jaune→`1H` | [campbell/teros22_sen0308_cr1000.CR1](campbell/teros22_sen0308_cr1000.CR1), [campbell/teros22_sen0308_cr800.CR8](campbell/teros22_sen0308_cr800.CR8) | TEROS et SEN0308 horodatées dans la même table → co-localisation directe (niveau 3) |
 | **B — Arduino Nano ESP32** | rouge→`3V3`, noir→`GND`, jaune→`A0` | [firmware/esp32_nano_sen0308/](firmware/esp32_nano_sen0308/) + [tools/calib_sen0308.py](tools/calib_sen0308.py) | Autonome, CSV série + InfluxDB ; variante LoRaWAN (RFM95) avec décodeur [ttn/decoder_sen0308.js](ttn/decoder_sen0308.js) |
 
 Calibration rapide (option B) : `python tools/calib_sen0308.py --port COM5 --ref air` puis `--ref water`, reporter `AIR_MV`/`WATER_MV` dans `config.h`.
@@ -93,13 +122,15 @@ Les seuils sont configurables par zone dans Node-RED (`server/nodered/`).
 3. **Firmware** : renseigner les clés OTAA dans `firmware/esp32_valve_controller/src/config.h`, compiler avec PlatformIO, flasher.
 4. **Grafana** : importer le dashboard (voir `grafana/`), pointer la datasource InfluxDB.
 
-## 📊 État d'avancement (06/08/2026)
+## 📊 État d'avancement (09/10/2026)
 
 | Étape | État |
 |---|---|
+| **Pré-manip** — collecteur balance Ohaus : interface Windows (exe) et macOS, CSV + InfluxDB, dashboard Grafana poids | ✅ Opérationnel (PC) ; Mac validé en diagnostic série |
+| **Pré-manip** — programmes Campbell CR1000/CR800 TEROS 22 (+ SEN0308) | ✅ Écrits (TEROS seule testée sur CR800) |
+| **Pré-manip** — sonde DFRobot SEN0308 : protocole de calibration, firmware Nano ESP32, outil Python | ✅ Écrits — calibration terrain à faire |
 | Firmware ESP32 vanne + débitmètre | ✅ Écrit (à flasher/tester) |
 | Décodeurs TTN (TEROS21, vanne, SEN0308) | ✅ Écrits |
-| Sonde DFRobot SEN0308 : protocole de calibration, programme CR1000, firmware Nano ESP32, outil Python | ✅ Écrits (09/10/2026) — calibration terrain à faire |
 | Stack Docker Node-RED/InfluxDB/Grafana | ✅ Opérationnelle en local |
 | Flux Node-RED « IoT Irrigation Piloté » | ✅ Déployé — dashboard `/ui` : jauge kPa, seuils réglables, mode auto, boutons OUVRIR/FERMER par zone |
 | Export du flux | ✅ [server/nodered/flow_iot_irrigation_pilote.json](server/nodered/flow_iot_irrigation_pilote.json) (importable) |
