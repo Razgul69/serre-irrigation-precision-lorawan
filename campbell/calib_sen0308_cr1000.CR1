@@ -1,0 +1,77 @@
+'CR1000 - Calibration DFRobot SEN0308 seule (sonde capacitive analogique)
+'Usage : banc de calibration (air / eau / paliers de rehumidification) - voir docs/calibration_sen0308.md
+'
+'Cablage : rouge -> 5V (borne 5V du CR1000, PAS 12V), noir -> G, jaune (signal 0-3 V) -> 1H (SE1)
+'
+'Lecture dans Public :
+'  SEN_mV      : lecture instantanee (1 s)
+'  SEN_mV_1min : moyenne glissante 60 s  -> valeur a relever pour chaque point
+'  SEN_Std     : ecart-type glissant 60 s -> attendre qu'il soit < 10 mV avant de relever
+'  Point       : numero de point saisi par l'operateur (0 = sec, 1..5 = paliers, 9 = eau, 10 = sature...)
+'Table CalibSEN0308 : 1 ligne / 30 s avec moyenne, ecart-type, min, max et le numero de point.
+
+Const SEN_CHAN = 1          'Canal single-ended du SEN0308 (1 = borne 1H)
+Const NAVG     = 60         'Fenetre glissante (scans de 1 s)
+
+'Constantes niveau 1 (a remplacer apres capture air / eau) - juste indicatives ici
+Const SEN_AIR_MV   = 2900
+Const SEN_WATER_MV = 50
+
+Public Batt_V
+Public PTemp_C
+Public SEN_mV
+Public SEN_mV_1min
+Public SEN_Std
+Public SEN_Index_pct
+Public Point As Long
+
+Units Batt_V = Volts
+Units PTemp_C = Deg C
+Units SEN_mV = mV
+Units SEN_mV_1min = mV
+Units SEN_Std = mV
+Units SEN_Index_pct = %
+
+Dim Buf(NAVG)
+Dim Sum, Sum2
+Dim i As Long
+
+DataTable(CalibSEN0308, True, 5000)
+    DataInterval(0, 30, Sec, 10)
+    Average(1, SEN_mV, IEEE4, False)
+    StdDev(1, SEN_mV, IEEE4, False)
+    Minimum(1, SEN_mV, IEEE4, False, False)
+    Maximum(1, SEN_mV, IEEE4, False, False)
+    Sample(1, Point, Long)
+    Sample(1, PTemp_C, FP2)
+EndTable
+
+BeginProg
+    Point = 0
+    Scan(1, Sec, 0, 0)
+        Battery(Batt_V)
+        PanelTemp(PTemp_C, 50)
+
+        'SEN0308 : 0-3 V decroissant avec l'humidite. Plage 5000 mV, rejet 50 Hz.
+        VoltSE(SEN_mV, 1, mV5000, SEN_CHAN, True, 0, _50Hz, 1.0, 0)
+
+        'Moyenne et ecart-type glissants sur NAVG scans
+        AvgRun(SEN_mV_1min, 1, SEN_mV, NAVG)
+        For i = NAVG To 2 Step -1
+            Buf(i) = Buf(i - 1)
+        Next i
+        Buf(1) = SEN_mV
+        Sum = 0 : Sum2 = 0
+        For i = 1 To NAVG
+            Sum = Sum + Buf(i)
+            Sum2 = Sum2 + Buf(i) * Buf(i)
+        Next i
+        SEN_Std = SQR(ABS(Sum2 / NAVG - (Sum / NAVG) ^ 2))
+
+        SEN_Index_pct = 100 * (SEN_AIR_MV - SEN_mV_1min) / (SEN_AIR_MV - SEN_WATER_MV)
+        If SEN_Index_pct < 0 Then SEN_Index_pct = 0
+        If SEN_Index_pct > 100 Then SEN_Index_pct = 100
+
+        CallTable(CalibSEN0308)
+    NextScan
+EndProg

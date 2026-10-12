@@ -37,3 +37,6 @@ Le programme suppose l'adresse SDI-12 usine `0`. Modifier `SDI_ADDR` si la sonde
 Compiler d'abord le fichier dans CRBasic Editor pour la cible **CR1000**, puis l'envoyer avec LoggerNet ou PC400. Avant l'essai, controler dans la table `Public` que `WaterPot_kPa` et `SoilTemp_C` changent et ne valent pas `NAN`.
 
 Pour l'export manuel, recuperer la table `MesuresTEROS22` au format TOA5/CSV en conservant l'horodatage du datalogger.
+## Calibration SEN0308 seule
+
+`calib_sen0308_cr1000.CR1` : programme de banc (sonde seule, scan 1 s). Dans Public : `SEN_mV_1min` (moyenne 60 s a relever), `SEN_Std` (attendre < 10 mV), `Point` (numero de point saisi a la main, stocke dans la table). Table `CalibSEN0308` toutes les 30 s. Copie : `D:\Mes Programmes\SCWin\sys\calib sen0308 cr1000.CR1`.
