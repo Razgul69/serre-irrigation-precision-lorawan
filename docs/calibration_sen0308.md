@@ -73,7 +73,7 @@ Interprétation DFRobot par tiers : indice 0 – 33 % « sec », 33 – 66 % « 
 
 Objectif : obtenir θ = f(mV) pour **votre substrat**. Cinq points suffisent (sec → saturé).
 
-1. **Préparer** un pot de volume intérieur connu $V$ (L) rempli de substrat au tassement de culture, sonde insérée
+1. **Préparer** un pot de volume connu $V$ (L — nominal, pichet gradué ou calcul) rempli de substrat au tassement de culture, sonde insérée
    à la ligne repère. Peser l'ensemble vide (pot + sonde) : $m_0$.
 2. **Saturer** le substrat (arroser, laisser drainer 30 min, boucher le drainage). Peser : $m_1$. Lire la sonde
    (moyenne 30 s) : $mV_1$.
@@ -103,7 +103,7 @@ en 5 V par le datalogger. Durée : 1 à 2 semaines calendaires (séchage), ~15 m
 
 | # | Action | À noter |
 |---|---|---|
-| 1 | Peser le pot vide (sans trou de drainage, ou trou bouché) : $m_{pot}$. Le remplir d'eau à ras, peser. $V = (m_{plein} - m_{pot})$ en g = volume en **mL**. Vider, sécher. | $m_{pot}$, $V$ |
+| 1 | Peser le pot vide : $m_{pot}$. Volume $V$ (mL) : volume nominal du pot, pichet gradué, ou calcul à partir des dimensions. | $m_{pot}$, $V$ |
 | 2 | Remplir de substrat au tassement de culture (même geste qu'un rempotage), arroser légèrement pour qu'il tienne. | substrat, date |
 | 3 | Insérer la SEN0308 verticalement jusqu'à la **ligne repère**, au centre du pot. Si possible la TEROS à 5–10 cm. | — |
 | 4 | Fixer le câble de la sonde à un support (potence, pince) avec une boucle lâche vers le pot : le câble doit peser **de la même façon à chaque pesée**. Marquer la position du pot sur la balance. | — |
@@ -180,7 +180,7 @@ plastique ou seau avec couvercle, eau tiède, pichet gradué, CR800 avec `CalibO
 
 | # | Action | À noter |
 |---|---|---|
-| 1 | Volume du pot : peser vide ($m_{pot}$), remplir d'eau à ras, repeser → $V$ en mL. Vider, sécher. Marquer le trait de remplissage. | $m_{pot}$, $V$ |
+| 1 | Peser le pot vide ($m_{pot}$). Volume $V$ (mL) : prendre le volume nominal du pot (ex. 2 L), ou le remplir au pichet gradué, ou le calculer ($\pi r^2 h$ ; conique : $\frac{\pi h}{3}(R^2+Rr+r^2)$). Marquer le trait de remplissage. | $m_{pot}$, $V$ |
 | 2 | Humidité résiduelle (recommandé) : prélever 50–100 g de terreau « sec », peser ($m_h$), étuve 70 °C 24 h, repeser ($m_d$). $w_{res} = (m_h - m_d)/m_d$. Un terreau séché à l'air garde 5–15 % d'eau en masse. Sans étuve : $w_{res} = 0{,}10$ par défaut et le noter. | $w_{res}$ |
 | 3 | Remplir le pot de terreau sec jusqu'au trait avec le tassement de culture. Peser → masse de substrat $m_s = m_{total} - m_{pot}$. Densité apparente $\rho_b = m_s / V$ (attendu 0,15–0,35 g/mL). | $m_s$, $\rho_b$ |
 | 4 | Insérer la SEN0308 jusqu'à la ligne repère, attendre 15 min, `CalibOn = True`, 5 min, moyenne des 10 lignes de `CalibSEN0308` → $mV_0$. `CalibOn = False`. | $mV_0$ |
