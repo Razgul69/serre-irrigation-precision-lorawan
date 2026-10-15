@@ -58,6 +58,8 @@ campbell/                          # [Pré-manip] Programmes CR1000 / CR800 : TE
 balance/                           # [Pré-manip] Collecteur balance Ohaus DP15/M : interfaces PC (Windows) et Mac
 tools/calib_sen0308.py             # [Pré-manip] Enregistrement série + ajustement gravimétrique SEN0308
 docs/calibration_sen0308.md        # [Pré-manip] Protocole de calibration SEN0308 (3 niveaux)
+docs/Calibration_SEN0308.xlsx      # [Pré-manip] Carnet de calibration : Lisez-moi, points et export CR1000
+tools/build_sen0308_workbook.py    # Regénère le classeur depuis l’export TOA5 CR1000
 DIAGNOSTIC.md                      # [Pré-manip] Diagnostic liaison série balance sur macOS
 ttn/                               # Décodeurs de payload TTN (TEROS21, contrôleur vanne, SEN0308)
 server/docker-compose.yml          # Stack Node-RED + InfluxDB + Grafana
@@ -92,6 +94,8 @@ Parseur SICS testé dans [tests/test_balance_parser.py](tests/test_balance_parse
 | [teros22_sen0308_cr800.CR8](campbell/teros22_sen0308_cr800.CR8) | CR800 | Identique pour CR800 |
 
 La balance est volontairement **hors datalogger** : elle est acquise par le PC/Mac et croisée avec les données Campbell/InfluxDB par horodatage.
+
+Carnet Excel : [docs/Calibration_SEN0308.xlsx](docs/Calibration_SEN0308.xlsx) (copie de travail : `D:\capteur arduino\Calibration_SEN0308.xlsx`). Il contient un onglet **Lisez-moi**, la synthèse des points et pesées, ainsi que les 1 879 lignes brutes du fichier `CalibSEN0308.dat`. Pour le mettre à jour après un nouvel export, remplacer le fichier source à son emplacement indiqué dans le script puis exécuter `python tools/build_sen0308_workbook.py`.
 
 ## 🧪 [Pré-manip] Sonde DFRobot SEN0308 (en complément de la TEROS)
 
