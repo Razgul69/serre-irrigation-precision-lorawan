@@ -20,6 +20,8 @@ DRY_POT_SOIL_G = 2050.0
 VOLUME_ML = 4800.0
 FIELD_CAPACITY_G = 3555.0
 REPEAT_WEIGHT_G = 3530.0
+CURRENT_WEIGHT_G = 3523.0
+CURRENT_WINDOW_END = dt.datetime(2026, 10, 15, 14, 44, 30)
 
 NAVY = "17324D"
 TEAL = "147D82"
@@ -97,8 +99,10 @@ def main() -> None:
     fc_window = summarize_window(
         point6, dt.datetime(2026, 10, 14, 9, 19), dt.datetime(2026, 10, 14, 9, 24)
     )
-    latest_time = dt.datetime.strptime(point6[-1]["TIMESTAMP"], "%Y-%m-%d %H:%M:%S")
-    latest_window = summarize_window(point6, latest_time - dt.timedelta(minutes=5), latest_time)
+    latest_window = summarize_window(
+        point6, CURRENT_WINDOW_END - dt.timedelta(minutes=5), CURRENT_WINDOW_END
+    )
+    final_record = point6[-1]
 
     wb = Workbook()
     readme = wb.active
@@ -116,15 +120,17 @@ def main() -> None:
         ("Pot", "Pot vide 140 g ; volume nominal 4 800 mL."),
         ("Référence sèche corrigée", "Pot + terreau sec étuvé à 110 °C : 2 050 g, soit 1 910 g de terreau sec. L’ancienne valeur 2 256,57 g a été corrigée et n’est pas utilisée."),
         ("Point capacité au champ", "Pot drainé après arrosage : 3 555 g ; eau retenue estimée 1 505 g ; θ apparente = 31,35 % vol. Point mesuré le 14/10, après drainage."),
-        ("Pesée ultérieure", "Pot pesé à 3 530 g le 15/10 : 1 480 g au-dessus de la référence sèche, soit 30,83 % vol. Aucun relevé mV exactement associé à cette pesée n’est confirmé."),
+        ("Pesée précédente", "Pot pesé à 3 530 g le 15/10 : 1 480 g au-dessus de la référence sèche, soit 30,83 % vol. Pas de moyenne mV exactement associée à cette pesée."),
         ("Formule gravimétrique", "θ (% vol.) = 100 × (masse pot+terreau humide − 2 050 g) / 4 800 mL. Approximation basée sur 1 g d’eau ≈ 1 mL et le volume nominal du pot."),
         ("Point sec — lecture", f"Fenêtre 12/10 17:35:30–17:40:30 : {dry_window['mean']:.2f} mV, {dry_window['count']} blocs de 30 s, écart-type global estimé {dry_window['sd']:.2f} mV."),
         ("Capacité au champ — lecture", f"Fenêtre 14/10 09:19–09:24 : {fc_window['mean']:.2f} mV, {fc_window['count']} blocs, écart-type global estimé {fc_window['sd']:.2f} mV. C’est le relevé associé à la capacité au champ."),
-        ("Dernière fenêtre exportée", f"15/10 {latest_window['start']:%H:%M}–{latest_window['end']:%H:%M} : {latest_window['mean']:.2f} mV. Non validée : dernier bloc instable (écart-type {latest_window['max_block_sd']:.2f} mV) et poids correspondant non enregistré."),
-        ("État de calibration", "Deux points interprétables sont consignés (terreau sec et capacité au champ). Ils ne suffisent pas à valider une loi θ = f(mV) ; ajouter des points intermédiaires pendant le dessèchement."),
+        ("Mesure actuelle — provisoire", f"Poids déclaré : {CURRENT_WEIGHT_G:.0f} g. Fenêtre stable {latest_window['start']:%d/%m %H:%M:%S}–{latest_window['end']:%H:%M:%S} : {latest_window['mean']:.2f} mV (10 blocs, écart-type estimé {latest_window['sd']:.2f} mV). θ apparente = {100 * (CURRENT_WEIGHT_G - DRY_POT_SOIL_G) / VOLUME_ML:.2f} % vol."),
+        ("Contrôle de cohérence", f"La masse actuelle est seulement {FIELD_CAPACITY_G-CURRENT_WEIGHT_G:.0f} g sous la capacité au champ, mais le signal diffère de {latest_window['mean']-fc_window['mean']:.1f} mV. Point à vérifier (même profondeur/contact, pot et câble pesés de la même façon) ; ne pas encore l’utiliser dans l’ajustement."),
+        ("Bloc final rejeté", f"Le dernier enregistrement du fichier est {final_record['TIMESTAMP']} : {float(final_record['SEN_mV_Avg']):.2f} mV, écart-type {float(final_record['SEN_mV_Std']):.2f} mV. Il est exclu de la moyenne stable."),
+        ("État de calibration", "Deux références restent utilisables (terreau sec et capacité au champ). Le nouveau couple poids/mV est conservé comme provisoire, car sa variation de signal paraît incohérente avec l’écart de masse."),
         ("Prochain point utile", "Laisser sécher sans ajouter d’eau. Pour une baisse d’environ 10 % vol. depuis la capacité au champ : viser ≈ 3 075 g pot+terreau (sans sonde), puis noter la masse et la moyenne mV sur une fenêtre stable de 5 min."),
         ("Comment ajouter un relevé", "Dans « Points calibration », saisir une ligne avec le poids du pot sans sonde, la date/heure, la moyenne SEN_mV sur 5 min et le plus grand écart-type des blocs. Les colonnes d’eau retenue et θ sont calculées automatiquement."),
-        ("Attention au champ Point", "Le programme a gardé Point=6 du 14/10 au 15/10. Ce numéro ne prouve pas que toutes ces lignes sont au même état d’humidité : utiliser poids + heure pour identifier les étapes. La dernière fenêtre est signalée, pas utilisée comme point de calibration."),
+        ("Attention au champ Point", "Le programme a gardé Point=6 du 14/10 au 15/10. Ce numéro ne prouve pas que toutes ces lignes sont au même état d’humidité : utiliser poids + heure pour identifier les étapes. Le bloc de 14:45 est exclu."),
         ("Source", str(SOURCE)),
     ]
     for index, (label, text) in enumerate(readme_rows, start=4):
@@ -144,7 +150,8 @@ def main() -> None:
         ["0 — terreau sec étuvé", "12/10/2026 17:35:30–17:40:30", 2050.0, DRY_POT_SOIL_G, None, None, dry_window["mean"], dry_window["sd"], dry_window["count"], "Mesure brute stable ; masse sèche corrigée le 15/10."],
         ["6 — capacité au champ drainée", "14/10/2026 09:19–09:24", FIELD_CAPACITY_G, DRY_POT_SOIL_G, None, None, fc_window["mean"], fc_window["sd"], fc_window["count"], "Poids déclaré 3 555 g ; lecture stable associée."],
         ["Répétition / séchage", "15/10/2026 — heure non précisée", REPEAT_WEIGHT_G, DRY_POT_SOIL_G, None, None, None, None, None, "Pesée déclarée ; pas de moyenne mV associée avec certitude."],
-        ["Observation export, non validée", f"15/10/2026 {latest_window['start']:%H:%M}–{latest_window['end']:%H:%M}", None, DRY_POT_SOIL_G, None, None, latest_window["mean"], latest_window["sd"], latest_window["count"], f"À exclure de l’ajustement : bloc final instable (Std max {latest_window['max_block_sd']:.2f} mV), poids inconnu."],
+        ["6 — séchage, à vérifier", f"15/10/2026 {latest_window['start']:%H:%M:%S}–{latest_window['end']:%H:%M:%S}", CURRENT_WEIGHT_G, DRY_POT_SOIL_G, None, None, latest_window["mean"], latest_window["sd"], latest_window["count"], f"Couple déclaré 3 523 g / {latest_window['mean']:.2f} mV ; provisoire : +{latest_window['mean']-fc_window['mean']:.1f} mV pour seulement -{FIELD_CAPACITY_G-CURRENT_WEIGHT_G:.0f} g vs capacité au champ."],
+        ["Bloc isolé, rejeté", final_record["TIMESTAMP"], None, DRY_POT_SOIL_G, None, None, float(final_record["SEN_mV_Avg"]), float(final_record["SEN_mV_Std"]), 1, "Écart-type élevé au dernier enregistrement ; ne pas utiliser."],
         ["5 — prochain palier visé", "À compléter", 3075.0, DRY_POT_SOIL_G, None, None, None, None, None, "Cible indicative, environ 10 % vol. sous capacité au champ ; saisir la vraie pesée et la fenêtre stable."],
         ["4 — palier suivant indicatif", "À compléter", 2595.0, DRY_POT_SOIL_G, None, None, None, None, None, "Cible indicative ; saisir la vraie pesée et la fenêtre stable."],
     ]
@@ -154,7 +161,7 @@ def main() -> None:
                 points.cell(r, c, value)
         points.cell(r, 5, f'=IF(C{r}="","",C{r}-D{r})')
         points.cell(r, 6, f'=IF(E{r}="","",100*E{r}/{VOLUME_ML})')
-        if r in (7, 8, 9, 10):
+        if r in (7, 8, 10, 11):
             for cell in points[r]:
                 cell.fill = PatternFill("solid", fgColor=PALE_YELLOW)
     for _ in range(6):
