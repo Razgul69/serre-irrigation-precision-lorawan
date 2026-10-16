@@ -18,6 +18,7 @@ LAUNCH_AGENT = (
     Path.home() / "Library" / "LaunchAgents" / "org.ird.irrigation.nodered.plist"
 )
 FLOW_PATH = Path(__file__).with_name("flow_balance_mac.json")
+DASHBOARD_SOURCE = Path(__file__).with_name("balance_poids.json")
 INFLUX_URL = "http://127.0.0.1:8086"
 NODE_RED_URL = "http://127.0.0.1:1880"
 
@@ -127,6 +128,18 @@ def update_node_red_environment(token: str) -> None:
     )
 
 
+def use_local_influxdb(value: Any) -> None:
+    if isinstance(value, dict):
+        datasource = value.get("datasource")
+        if isinstance(datasource, dict) and datasource.get("type") == "influxdb":
+            datasource["uid"] = "irrigation-mac"
+        for child in value.values():
+            use_local_influxdb(child)
+    elif isinstance(value, list):
+        for child in value:
+            use_local_influxdb(child)
+
+
 def deploy_flow() -> None:
     if not FLOW_PATH.is_file():
         raise RuntimeError(f"Flux Node-RED introuvable : {FLOW_PATH}")
@@ -151,6 +164,32 @@ def deploy_flow() -> None:
     )
 
 
+def provision_dashboard() -> None:
+    if not DASHBOARD_SOURCE.is_file():
+        raise RuntimeError(f"Dashboard balance introuvable : {DASHBOARD_SOURCE}")
+    dashboard = json.loads(DASHBOARD_SOURCE.read_text(encoding="utf-8"))
+    use_local_influxdb(dashboard)
+    dashboards_path = BASE / "config" / "grafana-dashboards"
+    dashboards_path.mkdir(parents=True, exist_ok=True)
+    write_private_json(dashboards_path / "balance_poids.json", dashboard)
+
+    provider_path = BASE / "grafana" / "conf" / "provisioning" / "dashboards"
+    provider_path.mkdir(parents=True, exist_ok=True)
+    provider = {
+        "apiVersion": 1,
+        "providers": [{
+            "name": "Balance Mac",
+            "orgId": 1,
+            "type": "file",
+            "disableDeletion": True,
+            "updateIntervalSeconds": 30,
+            "allowUiUpdates": True,
+            "options": {"path": str(dashboards_path)},
+        }],
+    }
+    write_private_json(provider_path / "balance-mac.yaml", provider)
+
+
 def main() -> int:
     if not SECRETS_PATH.is_file():
         raise RuntimeError(f"Fichier InfluxDB prive introuvable : {SECRETS_PATH}")
@@ -159,12 +198,20 @@ def main() -> int:
         raise RuntimeError("Le fichier local ne contient pas adminToken.")
     if not FLOW_PATH.is_file():
         raise RuntimeError("Le fichier flow_balance_mac.json doit etre dans le meme dossier.")
+    if not DASHBOARD_SOURCE.is_file():
+        raise RuntimeError("Le fichier balance_poids.json doit etre dans le meme dossier.")
 
     writer_token = configure_writer_token(secrets)
     update_node_red_environment(writer_token)
     wait_for_node_red()
     deploy_flow()
+    provision_dashboard()
+    subprocess.run(
+        ["/bin/launchctl", "kickstart", "-k", f"gui/{os.getuid()}/org.ird.irrigation.grafana"],
+        check=True,
+    )
     print("Flux balance installe dans Node-RED, autres onglets conserves.")
+    print("Dashboard Balance Ohaus provisionne dans Grafana.")
     print("Jeton d'ecriture limite au bucket sondes et conserve dans le fichier prive local.")
     print("Adresse locale de reception : http://127.0.0.1:1880/balance/measurement")
     return 0

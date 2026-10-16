@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "balance"))
 
 from mac_sync import SyncOutbox
+from configure_mac_sync import use_local_influxdb
 
 
 def test_mesures_en_attente_survivent_a_la_reouverture(tmp_path):
@@ -38,3 +39,25 @@ def test_flux_nodered_recoit_et_transmet_les_mesures_a_influx():
     assert "api/v2/write?org=ird&bucket=sondes" in by_id["mac-balance-validate"]["func"]
     assert by_id["mac-balance-influx"]["wires"] == [["mac-balance-result"]]
     assert by_id["mac-balance-result"]["wires"] == [["mac-balance-http-response"]]
+
+
+def test_dashboard_balance_utilise_la_datasource_influx_locale():
+    dashboard_path = Path(__file__).resolve().parent.parent / "grafana" / "dashboards" / "balance_poids.json"
+    dashboard = json.loads(dashboard_path.read_text(encoding="utf-8"))
+    use_local_influxdb(dashboard)
+    datasource_refs = []
+
+    def collect_refs(value):
+        if isinstance(value, dict):
+            datasource = value.get("datasource")
+            if isinstance(datasource, dict) and datasource.get("type") == "influxdb":
+                datasource_refs.append(datasource["uid"])
+            for child in value.values():
+                collect_refs(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect_refs(child)
+
+    collect_refs(dashboard)
+    assert datasource_refs
+    assert set(datasource_refs) == {"irrigation-mac"}

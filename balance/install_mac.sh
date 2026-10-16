@@ -50,6 +50,8 @@ curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precisio
     -o configure_mac_sync.py
 curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/server/nodered/flow_balance_mac.json" \
     -o flow_balance_mac.json
+curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/grafana/dashboards/balance_poids.json" \
+    -o balance_poids.json
 curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/diagnose_serial_macos.py" \
     -o diagnose_serial_macos.py
 echo "Script telecharge."
