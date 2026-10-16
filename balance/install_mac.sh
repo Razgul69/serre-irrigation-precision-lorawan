@@ -44,6 +44,12 @@ pip install --quiet pyserial
 # 3. Recuperation du script de collecte
 SCRIPT_URL="https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/balance_gui_macos.py"
 curl -fsSL "$SCRIPT_URL" -o balance_gui_macos.py
+curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/mac_sync.py" \
+    -o mac_sync.py
+curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/configure_mac_sync.py" \
+    -o configure_mac_sync.py
+curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/server/nodered/flow_balance_mac.json" \
+    -o flow_balance_mac.json
 curl -fsSL "https://raw.githubusercontent.com/Razgul69/serre-irrigation-precision-lorawan/master/balance/diagnose_serial_macos.py" \
     -o diagnose_serial_macos.py
 echo "Script telecharge."

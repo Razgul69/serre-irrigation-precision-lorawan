@@ -1,4 +1,4 @@
-"""Collecteur macOS pour balance Ohaus DP15/M, CSV local uniquement.
+"""Collecteur macOS pour balance Ohaus DP15/M, CSV et synchronisation optionnelle.
 
 Construction sur le Mac :
     python3 -m PyInstaller --windowed --name BalanceCollecteurMac balance_gui_macos.py
@@ -7,19 +7,20 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import json
 import os
 import queue
 import re
 import subprocess
-import sys
 import threading
 import time
-import tkinter as tk
+import urllib.parse
 from pathlib import Path
-from tkinter import ttk
+import tkinter as tk
 
 import serial
 from serial.tools import list_ports
+from mac_sync import SyncOutbox, SyncWorker
 
 BAUD = 9600
 INTERVAL_S = 5.0
@@ -37,6 +38,34 @@ def serial_ports() -> list[str]:
 
 def data_directory() -> Path:
     return Path.home() / "Documents" / "BalanceCollecteur" / "data balance"
+
+
+def app_data_directory() -> Path:
+    return Path.home() / "Library" / "Application Support" / "BalanceCollecteur"
+
+
+def load_preferences() -> dict:
+    path = app_data_directory() / "settings.json"
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        settings = {}
+    return {
+        "sync_enabled": bool(settings.get("sync_enabled", False)),
+        "node_red_url": str(settings.get(
+            "node_red_url", "http://127.0.0.1:1880"
+        )),
+    }
+
+
+def save_preferences(settings: dict) -> None:
+    directory = app_data_directory()
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "settings.json"
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+    temporary.chmod(0o600)
+    temporary.replace(path)
 
 
 def parse_frame(frame: str):
@@ -58,10 +87,12 @@ def parse_frame(frame: str):
 
 
 class Collector(threading.Thread):
-    def __init__(self, port: str, events: queue.Queue):
+    def __init__(self, port: str, events: queue.Queue,
+                 outbox: SyncOutbox | None = None):
         super().__init__(daemon=True)
         self.port = port
         self.events = events
+        self.outbox = outbox
         self.stop_flag = threading.Event()
 
     def run(self):
@@ -109,6 +140,14 @@ class Collector(threading.Thread):
                         self.events.put(("error", status, n_ok, n_err))
                     if changed:
                         last_written = weight
+                        if self.outbox is not None:
+                            self.outbox.enqueue({
+                                "timestamp_utc": timestamp.isoformat(),
+                                "raw_frame": frame,
+                                "weight_g": weight,
+                                "stable": bool(stable),
+                                "balance_id": "dp15m",
+                            })
                     self.stop_flag.wait(max(0.0, next_read - time.monotonic()))
         except serial.SerialException as error:
             self.events.put(("fatal", f"Erreur port serie : {error}"))
@@ -135,13 +174,17 @@ class App:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Balance Ohaus - Collecte Mac")
-        self.root.geometry("640x380")
-        self.root.minsize(560, 340)
+        self.root.geometry("640x420")
+        self.root.minsize(580, 390)
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
         self.collector: Collector | None = None
+        self.sync_worker: SyncWorker | None = None
         self.events: queue.Queue = queue.Queue()
         self.caffeinate: subprocess.Popen | None = None
+        preferences = load_preferences()
+        self.sync_enabled_var = tk.BooleanVar(value=preferences["sync_enabled"])
+        self.node_red_url_var = tk.StringVar(value=preferences["node_red_url"])
 
         self.lbl_weight = tk.Label(self.root, text="--- g", font=("Helvetica", 32, "bold"),
                                    bg=BG, fg=FG)
@@ -161,7 +204,7 @@ class App:
         self.lbl_counts.pack()
 
         port_frame = tk.Frame(self.root, bg=BG)
-        port_frame.pack(pady=(12, 4))
+        port_frame.pack(pady=(8, 2))
         tk.Label(port_frame, text="Port balance :", bg=BG, fg=FG).pack(side=tk.LEFT, padx=(0, 8))
         self.port_var = tk.StringVar()
         self.port_menu = ttk.Combobox(port_frame, textvariable=self.port_var,
@@ -172,8 +215,20 @@ class App:
         self.btn_refresh.pack(side=tk.LEFT, padx=(6, 0))
         self.refresh_ports()
 
+        sync_frame = tk.Frame(self.root, bg=BG)
+        sync_frame.pack(fill=tk.X, padx=24, pady=(5, 0))
+        self.sync_toggle = ttk.Checkbutton(
+            sync_frame, text="Envoyer aussi vers Node-RED", variable=self.sync_enabled_var
+        )
+        self.sync_toggle.pack(anchor=tk.W)
+        endpoint_frame = tk.Frame(sync_frame, bg=BG)
+        endpoint_frame.pack(fill=tk.X, pady=(3, 0))
+        tk.Label(endpoint_frame, text="Adresse Node-RED :", bg=BG, fg=FG).pack(side=tk.LEFT)
+        self.node_red_entry = ttk.Entry(endpoint_frame, textvariable=self.node_red_url_var)
+        self.node_red_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
+
         controls = tk.Frame(self.root, bg=BG)
-        controls.pack(pady=14)
+        controls.pack(pady=9)
         self.btn_start = ColorButton(controls, "MARCHE", "#2e7d32", self.start)
         self.btn_start.pack(side=tk.LEFT, padx=10)
         self.btn_stop = ColorButton(controls, "ARRET", "#c62828", self.stop)
@@ -201,9 +256,25 @@ class App:
         if not port:
             self.refresh_ports()
             return
+        settings = {
+            "sync_enabled": self.sync_enabled_var.get(),
+            "node_red_url": self.node_red_url_var.get().strip().rstrip("/"),
+        }
+        if settings["sync_enabled"]:
+            parsed_url = urllib.parse.urlparse(settings["node_red_url"])
+            if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+                self.lbl_status.config(text="Adresse Node-RED invalide", fg="#c62828")
+                return
+        save_preferences(settings)
         self.lbl_connection.config(text=f"Ouverture du port {port}...", fg="#ef6c00")
         self.caffeinate = subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
-        self.collector = Collector(port, self.events)
+        outbox = None
+        if settings["sync_enabled"]:
+            outbox = SyncOutbox(app_data_directory() / "sync.sqlite3")
+            endpoint = settings["node_red_url"] + "/balance/measurement"
+            self.sync_worker = SyncWorker(outbox, endpoint, self.events)
+            self.sync_worker.start()
+        self.collector = Collector(port, self.events, outbox)
         self.collector.start()
         self.port_menu.config(state=tk.DISABLED)
         self.btn_refresh.config(state=tk.DISABLED)
@@ -214,6 +285,9 @@ class App:
     def stop(self):
         if self.collector:
             self.collector.stop_flag.set()
+        if self.sync_worker:
+            self.sync_worker.stop_flag.set()
+            self.sync_worker = None
         if self.caffeinate:
             self.caffeinate.terminate()
             self.caffeinate = None
@@ -248,6 +322,14 @@ class App:
                     self.lbl_connection.config(
                         text=f"BALANCE CONNECTEE : reponse recue sur {event[1]}",
                         fg="#2e7d32")
+                elif event[0] == "sync_ok":
+                    self.lbl_connection.config(
+                        text=f"Node-RED synchronise - {event[1]} mesure(s) en attente",
+                        fg="#2e7d32")
+                elif event[0] == "sync_error":
+                    self.lbl_connection.config(
+                        text=f"Envoi Node-RED en attente ({event[2]}) : {event[1]}",
+                        fg="#ef6c00")
                 else:
                     self.lbl_status.config(text=event[1])
         except queue.Empty:

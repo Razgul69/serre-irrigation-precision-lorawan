@@ -1,0 +1,104 @@
+[
+    {
+        "id": "mac-balance-tab",
+        "type": "tab",
+        "label": "Balance Mac",
+        "disabled": false,
+        "info": "Reception locale de l'application BalanceCollecteurMac puis ecriture InfluxDB."
+    },
+    {
+        "id": "mac-balance-http-in",
+        "type": "http in",
+        "z": "mac-balance-tab",
+        "name": "Mesure balance Mac",
+        "url": "/balance/measurement",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 180,
+        "y": 120,
+        "wires": [
+            [
+                "mac-balance-validate"
+            ]
+        ]
+    },
+    {
+        "id": "mac-balance-validate",
+        "type": "function",
+        "z": "mac-balance-tab",
+        "name": "Valider et preparer InfluxDB",
+        "func": "const p = msg.payload;\nconst timestamp = new Date(p && p.timestamp_utc);\nconst balanceId = String((p && p.balance_id) || \"dp15m\");\nif (!p || !Number.isFinite(Number(p.weight_g)) || !Number.isFinite(timestamp.getTime()) || !/^[A-Za-z0-9_-]{1,64}$/.test(balanceId) || typeof p.stable !== \"boolean\") {\n    msg.statusCode = 400;\n    msg.payload = \"Mesure invalide\";\n    return [null, msg];\n}\nconst token = env.get(\"INFLUX_TOKEN\");\nif (!token) {\n    msg.statusCode = 503;\n    msg.payload = \"Jeton InfluxDB non configure\";\n    return [null, msg];\n}\nconst weight = Number(p.weight_g);\nmsg.method = \"POST\";\nmsg.url = \"http://127.0.0.1:8086/api/v2/write?org=ird&bucket=sondes&precision=ms\";\nmsg.headers = {\"Authorization\": \"Token \" + token, \"Content-Type\": \"text/plain; charset=utf-8\"};\nmsg.payload = `balance,balance_id=${balanceId} weight_g=${weight},stable=${p.stable} ${timestamp.getTime()}`;\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 120,
+        "wires": [
+            [
+                "mac-balance-influx"
+            ],
+            [
+                "mac-balance-http-response"
+            ]
+        ]
+    },
+    {
+        "id": "mac-balance-influx",
+        "type": "http request",
+        "z": "mac-balance-tab",
+        "name": "Ecrire la mesure InfluxDB",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 710,
+        "y": 100,
+        "wires": [
+            [
+                "mac-balance-result"
+            ]
+        ]
+    },
+    {
+        "id": "mac-balance-result",
+        "type": "function",
+        "z": "mac-balance-tab",
+        "name": "Confirmer apres ecriture",
+        "func": "if (msg.statusCode >= 200 && msg.statusCode < 300) {\n    msg.statusCode = 204;\n    msg.payload = \"\";\n} else {\n    node.warn(\"Ecriture InfluxDB refusee, statut \" + msg.statusCode);\n    msg.statusCode = 502;\n    msg.payload = \"Ecriture InfluxDB impossible\";\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 100,
+        "wires": [
+            [
+                "mac-balance-http-response"
+            ]
+        ]
+    },
+    {
+        "id": "mac-balance-http-response",
+        "type": "http response",
+        "z": "mac-balance-tab",
+        "name": "Accuse de reception",
+        "statusCode": "",
+        "headers": {},
+        "x": 970,
+        "y": 180,
+        "wires": []
+    }
+]
